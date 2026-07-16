@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:open_filex/open_filex.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../core/api/models/xtream_account.dart';
 import '../../core/services/update_service.dart';
@@ -77,13 +78,56 @@ class _AccountSelectionScreenState extends ConsumerState<AccountSelectionScreen>
           FilledButton(
             onPressed: () {
               Navigator.pop(ctx);
-              launchUrl(Uri.parse('https://github.com/magickaiser/iptv_app/releases'));
+              _downloadAndInstall(version);
             },
             child: const Text('Descargar'),
           ),
         ],
       ),
     );
+  }
+
+  Future<void> _downloadAndInstall(String version) async {
+    double _progress = 0;
+    await showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (ctx, setDialogState) {
+            _startDownload(version, (pct) => setDialogState(() => _progress = pct), ctx);
+            return AlertDialog(
+              title: const Text('Descargando...'),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  LinearProgressIndicator(value: _progress),
+                  const SizedBox(height: 12),
+                  Text('${(_progress * 100).toStringAsFixed(0)}%'),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Future<void> _startDownload(String version, void Function(double) onProgress, BuildContext ctx) async {
+    try {
+      final path = await UpdateService.downloadApk(version, (r, t) {
+        if (t > 0) onProgress(r / t);
+      });
+      if (!mounted) return;
+      Navigator.pop(ctx);
+      await OpenFilex.open(path);
+    } catch (e) {
+      if (!mounted) return;
+      Navigator.pop(ctx);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error descargando: $e')),
+      );
+    }
   }
 
   @override
