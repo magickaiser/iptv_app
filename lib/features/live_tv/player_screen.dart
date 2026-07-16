@@ -39,12 +39,19 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
 
   Future<void> _findWorkingUrl() async {
     final provider = ref.read(liveTvProvider.notifier);
-    final urls = provider.client.buildStreamUrlList(widget.channel.streamId);
+    final client = provider.client;
+
+    // Build URL list: direct source first if available, then our constructed ones
+    final urls = <String>[];
+    final directSource = widget.channel.directSource;
+    if (directSource != null && directSource.isNotEmpty) {
+      urls.add(directSource);
+    }
+    urls.addAll(client.buildStreamUrlList(widget.channel.streamId));
 
     for (final url in urls) {
-      final result = await provider.client.checkStreamUrl(url);
+      final result = await client.checkStreamUrl(url);
       final status = result['status']!;
-      // Accept 2xx responses
       if (status != 'ERR' && int.tryParse(status) != null) {
         final code = int.parse(status);
         if (code >= 200 && code < 300) {
@@ -59,8 +66,8 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
 
     setState(() {
       _loading = false;
-      _errorMessage =
-          'No se pudo conectar con el stream.\nProbadas: .m3u8, .ts, sin extensión';
+      _errorMessage = 'No se pudo conectar con el stream.\n'
+          'Probadas: .m3u8, .ts, sin extensión';
     });
   }
 

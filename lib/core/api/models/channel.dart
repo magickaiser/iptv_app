@@ -5,6 +5,7 @@ class Channel {
   final int categoryId;
   final String? streamIcon;
   final String? epgChannelId;
+  final String? directSource;
 
   const Channel({
     required this.streamId,
@@ -12,15 +13,18 @@ class Channel {
     required this.categoryId,
     this.streamIcon,
     this.epgChannelId,
+    this.directSource,
   });
 
   factory Channel.fromJson(Map<String, dynamic> json) {
+    final rawDirect = json['direct_source'];
     return Channel(
       streamId: _parseInt(json['stream_id']),
       name: json['name'] as String,
       categoryId: _parseInt(json['category_id']),
       streamIcon: json['stream_icon'] as String?,
       epgChannelId: json['epg_channel_id'] as String?,
+      directSource: (rawDirect is String && rawDirect.isNotEmpty) ? rawDirect : null,
     );
   }
 
@@ -36,6 +40,7 @@ class Channel {
         'category_id': categoryId,
         'stream_icon': streamIcon,
         'epg_channel_id': epgChannelId,
+        'direct_source': directSource,
       };
 
   @override
