@@ -63,7 +63,7 @@ jobs:
           KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
         run: |
-          cat > android/key.properties << EOF
+          cat > key.properties << EOF
           storePassword=${KEYSTORE_PASSWORD}
           keyPassword=${KEY_PASSWORD}
           keyAlias=${KEY_ALIAS}
@@ -74,8 +74,7 @@ jobs:
         if: env.KEYSTORE_BASE64 == ''
         run: |
           echo "⚠️ No keystore secret found — release will be signed with debug keys"
-          # Create a dummy so Gradle doesn't fail
-          cat > android/key.properties << EOF
+          cat > key.properties << EOF
           storePassword=dummy
           keyPassword=dummy
           keyAlias=dummy
