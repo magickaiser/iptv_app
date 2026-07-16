@@ -8,11 +8,23 @@ import 'features/live_tv/live_tv_provider.dart';
 import 'core/theme/mobile_theme.dart';
 
 /// Root widget that adapts to auth state: login vs main app.
-class IptvApp extends ConsumerWidget {
+class IptvApp extends ConsumerStatefulWidget {
   const IptvApp({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<IptvApp> createState() => _IptvAppState();
+}
+
+class _IptvAppState extends ConsumerState<IptvApp> {
+  @override
+  void initState() {
+    super.initState();
+    // Auto-login with saved credentials
+    Future.microtask(() => ref.read(loginProvider.notifier).tryAutoLogin());
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final authState = ref.watch(loginProvider);
 
     return MaterialApp(

@@ -17,6 +17,21 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   bool _obscurePassword = true;
 
   @override
+  void initState() {
+    super.initState();
+    _prefillSavedCredentials();
+  }
+
+  void _prefillSavedCredentials() {
+    // Pre-fill from saved credentials so user can just re-login
+    final info = ref.read(loginProvider.notifier).savedInfo;
+    if (info != null) {
+      _serverController.text = info.serverUrl;
+      _usernameController.text = info.username;
+    }
+  }
+
+  @override
   void dispose() {
     _serverController.dispose();
     _usernameController.dispose();
@@ -46,6 +61,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(loginProvider);
+    final savedInfo = ref.read(loginProvider.notifier).savedInfo;
 
     return Scaffold(
       appBar: AppBar(title: const Text('IPTV Player')),
@@ -68,7 +84,38 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   'Introduce tus credenciales Xtream Codes',
                   style: TextStyle(color: Colors.grey),
                 ),
-                const SizedBox(height: 32),
+                const SizedBox(height: 24),
+
+                // Quick login button (if credentials are saved)
+                if (savedInfo != null) ...[
+                  SizedBox(
+                    width: double.infinity,
+                    height: 48,
+                    child: OutlinedButton.icon(
+                      icon: const Icon(Icons.person, size: 20),
+                      label: Text('Reanudar sesión como ${savedInfo.username}'),
+                      onPressed: state == AuthState.loading ? null : _login,
+                      style: OutlinedButton.styleFrom(
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  const Row(
+                    children: [
+                      Expanded(child: Divider()),
+                      Padding(
+                        padding: EdgeInsets.symmetric(horizontal: 12),
+                        child: Text('o introduce nuevos datos',
+                            style: TextStyle(color: Colors.grey, fontSize: 12)),
+                      ),
+                      Expanded(child: Divider()),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                ],
 
                 // Server URL
                 TextField(

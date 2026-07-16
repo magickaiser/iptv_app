@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/api/models/channel.dart';
 import '../../core/api/models/epg_program.dart';
+import '../player/video_player_widget.dart';
 import 'live_tv_provider.dart';
 
 /// Full-screen video player with EPG overlay.
@@ -22,9 +24,26 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
   @override
   void initState() {
     super.initState();
+    // Lock to landscape for video viewing
+    SystemChrome.setPreferredOrientations([
+      DeviceOrientation.landscapeLeft,
+      DeviceOrientation.landscapeRight,
+    ]);
     Future.microtask(() {
       ref.read(liveTvProvider.notifier).loadEpgForChannel(widget.channel.streamId);
     });
+  }
+
+  @override
+  void dispose() {
+    // Restore default orientations
+    SystemChrome.setPreferredOrientations([
+      DeviceOrientation.portraitUp,
+      DeviceOrientation.portraitDown,
+      DeviceOrientation.landscapeLeft,
+      DeviceOrientation.landscapeRight,
+    ]);
+    super.dispose();
   }
 
   String get _streamUrl {
@@ -40,13 +59,8 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
       backgroundColor: Colors.black,
       body: Stack(
         children: [
-          // Video player placeholder
-          Center(
-            child: _VideoPlaceholder(
-              streamUrl: _streamUrl,
-              channel: widget.channel,
-            ),
-          ),
+          // Video player
+          VideoPlayerWidget(streamUrl: _streamUrl),
 
           // EPG overlay
           if (_showEpg) _buildEpgOverlay(state.epgPrograms),
@@ -165,43 +179,6 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
           },
         ),
       ),
-    );
-  }
-}
-
-/// Temporary video placeholder (will be replaced by media_kit integration).
-class _VideoPlaceholder extends StatelessWidget {
-  final String streamUrl;
-  final Channel channel;
-
-  const _VideoPlaceholder({
-    required this.streamUrl,
-    required this.channel,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        const Icon(Icons.play_circle_outline, size: 80, color: Colors.white38),
-        const SizedBox(height: 16),
-        Text(
-          channel.name,
-          style: const TextStyle(color: Colors.white70, fontSize: 18),
-        ),
-        const SizedBox(height: 8),
-        Text(
-          'Reproductor de video',
-          style: TextStyle(color: Colors.grey[600], fontSize: 14),
-        ),
-        const SizedBox(height: 4),
-        Text(
-          streamUrl,
-          style: TextStyle(color: Colors.grey[700], fontSize: 10),
-          textAlign: TextAlign.center,
-        ),
-      ],
     );
   }
 }

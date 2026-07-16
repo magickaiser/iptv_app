@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/api/models/channel.dart';
 import 'live_tv_provider.dart';
+import 'player_screen.dart';
 
 /// Channel list with search and category filter.
 class ChannelsScreen extends ConsumerStatefulWidget {
@@ -119,25 +120,11 @@ class _ChannelTile extends ConsumerWidget {
           ref.read(liveTvProvider.notifier).loadEpgForChannel(channel.streamId);
           Navigator.of(context).push(
             MaterialPageRoute(
-              builder: (_) => _DummyPlayer(channel: channel),
+              builder: (_) => PlayerScreen(channel: channel),
             ),
           );
         },
       ),
-    );
-  }
-}
-
-/// Temporary placeholder until PlayerScreen is wired.
-class _DummyPlayer extends StatelessWidget {
-  final Channel channel;
-  const _DummyPlayer({required this.channel});
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: Text(channel.name)),
-      body: const Center(child: Text('Reproductor - próximamente')),
     );
   }
 }
