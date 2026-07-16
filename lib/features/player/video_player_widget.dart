@@ -48,6 +48,10 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget> {
 
     _videoController = VideoPlayerController.networkUrl(
       Uri.parse(url),
+      httpHeaders: {
+        'User-Agent': 'VLC/3.0.18',
+        'Accept': '*/*',
+      },
       videoPlayerOptions: VideoPlayerOptions(
         mixWithOthers: false,
         allowBackgroundPlayback: false,
