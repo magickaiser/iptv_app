@@ -20,6 +20,17 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   bool _obscurePassword = true;
 
   @override
+  void initState() {
+    super.initState();
+    // Listen to auth state: if authenticated, pop back
+    ref.listenManual(loginProvider, (prev, next) {
+      if (next == AuthState.authenticated && mounted) {
+        Navigator.of(context).pop();
+      }
+    });
+  }
+
+  @override
   void dispose() {
     _nameController.dispose();
     _serverController.dispose();
