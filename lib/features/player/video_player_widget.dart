@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_vlc_player/flutter_vlc_player.dart';
+import 'package:video_player/video_player.dart';
+import 'package:chewie/chewie.dart';
 
-/// Video player widget using VLC for universal IPTV stream support.
-/// Tries multiple URLs in sequence until one works.
+/// Video player using ExoPlayer (video_player + chewie) for HLS streaming.
 class VideoPlayerWidget extends StatefulWidget {
   final List<String> streamUrls;
 
@@ -16,9 +16,12 @@ class VideoPlayerWidget extends StatefulWidget {
 }
 
 class _VideoPlayerWidgetState extends State<VideoPlayerWidget> {
-  VlcPlayerController? _controller;
+  VideoPlayerController? _videoController;
+  ChewieController? _chewieController;
+  bool _initialized = false;
+  bool _error = false;
+  String _errorMessage = '';
   int _urlIndex = 0;
-  bool _waiting = true;
 
   @override
   void initState() {
@@ -26,84 +29,119 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget> {
     _tryNextUrl();
   }
 
-  void _tryNextUrl() {
+  Future<void> _tryNextUrl() async {
     if (_urlIndex >= widget.streamUrls.length) {
-      setState(() {
-        _waiting = false; // stays on last player state (VLC shows its own error)
-      });
+      if (mounted) {
+        setState(() {
+          _error = true;
+          _errorMessage = 'Ninguna URL de stream funcionó';
+        });
+      }
       return;
     }
 
     final url = widget.streamUrls[_urlIndex];
 
-    _controller?.dispose();
-    _controller = VlcPlayerController.network(
-      url,
-      autoPlay: true,
+    await _videoController?.dispose();
+    _chewieController?.dispose();
+
+    _videoController = VideoPlayerController.networkUrl(
+      Uri.parse(url),
     );
 
-    setState(() {
-      _waiting = false; // Show VLC immediately, it handles loading internally
-    });
+    try {
+      await _videoController!.initialize().timeout(
+        const Duration(seconds: 10),
+        onTimeout: () => throw Exception('Timeout de conexión'),
+      );
 
-    _controller!.addListener(() {
-      if (_controller!.value.hasError && mounted) {
-        // Try next URL after a short delay
-        Future.delayed(const Duration(seconds: 3), () {
-          if (mounted) {
-            _urlIndex++;
-            _tryNextUrl();
-          }
-        });
+      _chewieController = ChewieController(
+        videoPlayerController: _videoController!,
+        autoPlay: true,
+        looping: false,
+        allowFullScreen: false,
+        showControls: true,
+        showOptions: false,
+        materialProgressColors: ChewieProgressColors(
+          playedColor: Colors.blue,
+          handleColor: Colors.blueAccent,
+          bufferedColor: Colors.grey.shade700,
+        ),
+      );
+      if (mounted) setState(() => _initialized = true);
+    } catch (e) {
+      _urlIndex++;
+      if (mounted) {
+        setState(() => _errorMessage = '${widget.streamUrls[_urlIndex - 1]}\n${e.toString().replaceFirst("Exception: ", "")}');
       }
-    });
+      await _tryNextUrl();
+    }
   }
 
   @override
   void dispose() {
-    _controller?.dispose();
+    _videoController?.dispose();
+    _chewieController?.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    if (_waiting || _controller == null) {
-      return const Center(
+    if (_error) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(Icons.cloud_off, color: Colors.orange, size: 48),
+                const SizedBox(height: 12),
+                const Text('No se pudo cargar el canal',
+                    style: TextStyle(color: Colors.white, fontSize: 16)),
+                const SizedBox(height: 8),
+                Text(_errorMessage,
+                    style: const TextStyle(color: Colors.white54, fontSize: 10),
+                    textAlign: TextAlign.center),
+                const SizedBox(height: 20),
+                FilledButton.icon(
+                  onPressed: () {
+                    setState(() { _error = false; _urlIndex = 0; });
+                    _tryNextUrl();
+                  },
+                  icon: const Icon(Icons.refresh),
+                  label: const Text('Reintentar'),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+
+    if (!_initialized || _chewieController == null) {
+      return Center(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            SizedBox(
-              width: 40,
-              height: 40,
-              child: CircularProgressIndicator(color: Colors.white),
-            ),
-            SizedBox(height: 12),
-            Text('Conectando...',
+            const SizedBox(width: 40, height: 40,
+                child: CircularProgressIndicator(color: Colors.white)),
+            const SizedBox(height: 12),
+            const Text('Conectando...',
                 style: TextStyle(color: Colors.white54, fontSize: 13)),
+            const SizedBox(height: 6),
+            Text(
+              widget.streamUrls.isNotEmpty ? widget.streamUrls[0] : '',
+              style: const TextStyle(color: Colors.white30, fontSize: 9),
+              textAlign: TextAlign.center,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+            ),
           ],
         ),
       );
     }
 
-    // VLC shows its own loading/error/playback states
-    return VlcPlayer(
-      controller: _controller!,
-      aspectRatio: 16 / 9,
-      placeholder: const Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            SizedBox(
-              width: 40,
-              height: 40,
-              child: CircularProgressIndicator(color: Colors.white),
-            ),
-            SizedBox(height: 12),
-            Text('Conectando...',
-                style: TextStyle(color: Colors.white54, fontSize: 13)),
-          ],
-        ),
-      ),
-    );
+    return Chewie(controller: _chewieController!);
   }
 }
