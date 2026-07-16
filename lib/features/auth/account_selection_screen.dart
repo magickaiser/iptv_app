@@ -28,26 +28,36 @@ class _AccountSelectionScreenState extends ConsumerState<AccountSelectionScreen>
   }
 
   Future<void> _loadVersion() async {
-    final v = await UpdateService.getLocalVersion();
-    if (mounted) setState(() => _localVersion = v);
+    final result = await UpdateService.check();
+    if (result != null && mounted) {
+      setState(() => _localVersion = result.local);
+    }
   }
 
   Future<void> _checkUpdate() async {
-    setState(() {}); // trigger loading indicator
     try {
-      final available = await UpdateService.isUpdateAvailable();
-      final latest = await UpdateService.checkLatestVersion();
+      final result = await UpdateService.check();
       if (!mounted) return;
-      if (available) {
+      if (result == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('No se pudo comprobar actualizaciones')),
+        );
+        return;
+      }
+      final local = result.local;
+      final remote = result.remote;
+      setState(() => _localVersion = local);
+
+      if (remote != null && UpdateService.isNewer(remote, local)) {
         setState(() {
           _updateAvailable = true;
-          _latestVersion = latest;
+          _latestVersion = remote;
         });
-        _showUpdateDialog(latest!);
+        _showUpdateDialog(remote);
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Ya tienes la última versión ($_localVersion)'),
+            content: Text('Ya tienes la última versión ($local)'),
             backgroundColor: Colors.green,
             duration: const Duration(seconds: 2),
           ),
