@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:video_player/video_player.dart';
-import 'package:chewie/chewie.dart';
+import 'package:flutter/services.dart';
+import 'package:webview_flutter/webview_flutter.dart';
 
-/// Video player using ExoPlayer + FFmpeg for AC3/E-AC3 codec support.
+/// Video player using WebView for native AC3 codec support.
 class VideoPlayerWidget extends StatefulWidget {
   final List<String> streamUrls;
 
@@ -16,99 +16,67 @@ class VideoPlayerWidget extends StatefulWidget {
 }
 
 class _VideoPlayerWidgetState extends State<VideoPlayerWidget> {
-  VideoPlayerController? _videoController;
-  ChewieController? _chewieController;
-  bool _initialized = false;
-  bool _error = false;
+  WebViewController? _controller;
   int _urlIndex = 0;
+  bool _waiting = true;
 
   @override
   void initState() {
     super.initState();
-    _tryNextUrl();
+    _loadPlayer();
   }
 
-  Future<void> _tryNextUrl() async {
-    if (_urlIndex >= widget.streamUrls.length) {
-      if (mounted) setState(() => _error = true);
-      return;
-    }
+  String _buildHtml(String url) {
+    return '''
+<!DOCTYPE html>
+<html>
+<head>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<style>
+  * { margin: 0; padding: 0; }
+  body { background: #000; display: flex; align-items: center; justify-content: center; height: 100vh; overflow: hidden; }
+  video { width: 100%; height: 100%; object-fit: contain; }
+</style>
+</head>
+<body>
+  <video autoplay playsinline controls src="$url" type="application/vnd.apple.mpegurl"></video>
+</body>
+</html>
+''';
+  }
+
+  Future<void> _loadPlayer() async {
+    if (_urlIndex >= widget.streamUrls.length) return;
 
     final url = widget.streamUrls[_urlIndex];
+    final html = _buildHtml(url);
 
-    await _videoController?.dispose();
-    _chewieController?.dispose();
-
-    _videoController = VideoPlayerController.networkUrl(
-      Uri.parse(url),
-      httpHeaders: {
-        'User-Agent': 'Mozilla/5.0 (Linux; Android 15) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Mobile Safari/537.36',
-        'Referer': Uri.parse(url).scheme + '://' + Uri.parse(url).host + ':' + Uri.parse(url).port.toString(),
-        'Origin': Uri.parse(url).scheme + '://' + Uri.parse(url).host,
-      },
-    );
-
-    try {
-      await _videoController!.initialize().timeout(
-        const Duration(seconds: 10),
-        onTimeout: () => throw Exception('Timeout'),
-      );
-
-      _chewieController = ChewieController(
-        videoPlayerController: _videoController!,
-        autoPlay: true,
-        looping: false,
-        allowFullScreen: false,
-        showControls: true,
-        materialProgressColors: ChewieProgressColors(
-          playedColor: Colors.blue,
-          handleColor: Colors.blueAccent,
-          bufferedColor: Colors.grey.shade700,
+    _controller = WebViewController()
+      ..setJavaScriptMode(JavaScriptMode.unrestricted)
+      ..setBackgroundColor(Colors.black)
+      ..setNavigationDelegate(
+        NavigationDelegate(
+          onPageFinished: (_) {
+            if (mounted) setState(() => _waiting = false);
+          },
+          onWebResourceError: (_) {
+            _urlIndex++;
+            _loadPlayer();
+          },
         ),
-      );
-      if (mounted) setState(() => _initialized = true);
-    } catch (e) {
-      _urlIndex++;
-      await _tryNextUrl();
-    }
+      )
+      ..loadHtmlString(html);
   }
 
   @override
   void dispose() {
-    _videoController?.dispose();
-    _chewieController?.dispose();
+    _controller?.clearCache();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    if (_error) {
-      return Center(
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Icon(Icons.cloud_off, color: Colors.orange, size: 48),
-              const SizedBox(height: 12),
-              const Text('No se pudo cargar',
-                  style: TextStyle(color: Colors.white, fontSize: 16)),
-              const SizedBox(height: 20),
-              FilledButton.icon(
-                onPressed: () {
-                  setState(() { _error = false; _urlIndex = 0; });
-                  _tryNextUrl();
-                },
-                icon: const Icon(Icons.refresh),
-                label: const Text('Reintentar'),
-              ),
-            ],
-          ),
-        ),
-      );
-    }
-
-    if (!_initialized || _chewieController == null) {
+    if (_waiting) {
       return const Center(
         child: SizedBox(
           width: 40,
@@ -118,6 +86,13 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget> {
       );
     }
 
-    return Chewie(controller: _chewieController!);
+    if (_controller == null) {
+      return const Center(
+        child: Text('Error cargando reproductor',
+            style: TextStyle(color: Colors.white)),
+      );
+    }
+
+    return WebViewWidget(controller: _controller!);
   }
 }

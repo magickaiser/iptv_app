@@ -44,9 +44,8 @@ dependencies:
   # Utilities
   intl: ^0.19.0
 
-  # Video playback (ExoPlayer + FFmpeg para AC3/E-AC3)
-  video_player: ^2.13.0
-  chewie: ^1.8.5
+  # Video playback (WebView nativo con soporte AC3)
+  webview_flutter: ^4.10.0
 
 dev_dependencies:
   flutter_test:
@@ -71,8 +70,8 @@ flutter:
   uses-material-design: true
 
   # To add assets to your application, add an assets section, like this:
-  # assets:
-  #   - images/a_dot_burr.jpeg
+  assets:
+    - assets/player.html
   #   - images/a_dot_ham.jpeg
 
   # An image asset can refer to one or more resolution-specific "variants", see
