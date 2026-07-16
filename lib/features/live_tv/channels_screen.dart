@@ -3,37 +3,85 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/api/models/channel.dart';
 import 'live_tv_provider.dart';
 
-/// Channel list filtered by selected category.
-class ChannelsScreen extends ConsumerWidget {
+/// Channel list with search and category filter.
+class ChannelsScreen extends ConsumerStatefulWidget {
   const ChannelsScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<ChannelsScreen> createState() => _ChannelsScreenState();
+}
+
+class _ChannelsScreenState extends ConsumerState<ChannelsScreen> {
+  final _searchController = TextEditingController();
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final state = ref.watch(liveTvProvider);
 
-    if (state.loading) {
-      return const Expanded(
-        child: Center(child: CircularProgressIndicator()),
-      );
-    }
-
-    final channels = ref.read(liveTvProvider.notifier).filteredChannels;
-
-    if (channels.isEmpty) {
-      return const Expanded(
-        child: Center(
-          child: Text('No se encontraron canales', style: TextStyle(color: Colors.grey)),
-        ),
-      );
-    }
-
     return Expanded(
-      child: ListView.builder(
-        padding: const EdgeInsets.symmetric(horizontal: 12),
-        itemCount: channels.length,
-        itemBuilder: (context, index) {
-          return _ChannelTile(channel: channels[index]);
-        },
+      child: Column(
+        children: [
+          // --- Search bar ---
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            child: TextField(
+              controller: _searchController,
+              decoration: InputDecoration(
+                hintText: 'Buscar canal...',
+                prefixIcon: const Icon(Icons.search),
+                suffixIcon: _searchController.text.isNotEmpty
+                    ? IconButton(
+                        icon: const Icon(Icons.clear),
+                        onPressed: () {
+                          _searchController.clear();
+                          ref.read(liveTvProvider.notifier).setSearchQuery('');
+                        },
+                      )
+                    : null,
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                filled: true,
+                fillColor: Theme.of(context).colorScheme.surfaceContainerHighest,
+              ),
+              onChanged: (value) {
+                ref.read(liveTvProvider.notifier).setSearchQuery(value);
+                setState(() {}); // refresh suffix icon
+              },
+            ),
+          ),
+
+          // --- Channel list ---
+          if (state.loading)
+            const Center(child: CircularProgressIndicator())
+          else if (ref.read(liveTvProvider.notifier).filteredChannels.isEmpty)
+            const Padding(
+              padding: EdgeInsets.only(top: 60),
+              child: Text(
+                'No se encontraron canales',
+                style: TextStyle(color: Colors.grey),
+              ),
+            )
+          else
+            Expanded(
+              child: ListView.builder(
+                padding: const EdgeInsets.symmetric(horizontal: 12),
+                itemCount: ref.read(liveTvProvider.notifier).filteredChannels.length,
+                itemBuilder: (context, index) {
+                  final channel =
+                      ref.read(liveTvProvider.notifier).filteredChannels[index];
+                  return _ChannelTile(channel: channel);
+                },
+              ),
+            ),
+        ],
       ),
     );
   }
@@ -69,7 +117,6 @@ class _ChannelTile extends ConsumerWidget {
         trailing: const Icon(Icons.play_circle_outline),
         onTap: () {
           ref.read(liveTvProvider.notifier).loadEpgForChannel(channel.streamId);
-          // Navigate to player
           Navigator.of(context).push(
             MaterialPageRoute(
               builder: (_) => _DummyPlayer(channel: channel),

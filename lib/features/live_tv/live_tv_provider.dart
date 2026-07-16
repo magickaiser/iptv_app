@@ -53,10 +53,26 @@ class LiveTvProvider extends StateNotifier<LiveTvState> {
     state = state.copyWith(selectedCategoryId: categoryId);
   }
 
+  void setSearchQuery(String query) {
+    state = state.copyWith(searchQuery: query);
+  }
+
   List<Channel> get filteredChannels {
+    var channels = state.channels;
+
+    // Filter by category
     final catId = state.selectedCategoryId;
-    if (catId == null) return state.channels;
-    return state.channels.where((c) => c.categoryId == catId).toList();
+    if (catId != null) {
+      channels = channels.where((c) => c.categoryId == catId).toList();
+    }
+
+    // Filter by search query
+    final query = state.searchQuery.toLowerCase().trim();
+    if (query.isNotEmpty) {
+      channels = channels.where((c) => c.name.toLowerCase().contains(query)).toList();
+    }
+
+    return channels;
   }
 }
 
@@ -65,6 +81,7 @@ class LiveTvState {
   final List<Channel> channels;
   final List<EpgProgram> epgPrograms;
   final int? selectedCategoryId;
+  final String searchQuery;
   final bool loading;
   final bool epgLoading;
   final String? error;
@@ -74,6 +91,7 @@ class LiveTvState {
     this.channels = const [],
     this.epgPrograms = const [],
     this.selectedCategoryId,
+    this.searchQuery = '',
     this.loading = false,
     this.epgLoading = false,
     this.error,
@@ -84,6 +102,7 @@ class LiveTvState {
     List<Channel>? channels,
     List<EpgProgram>? epgPrograms,
     int? selectedCategoryId,
+    String? searchQuery,
     bool? loading,
     bool? epgLoading,
     String? error,
@@ -95,6 +114,7 @@ class LiveTvState {
       epgPrograms: epgPrograms ?? this.epgPrograms,
       selectedCategoryId:
           clearCategory ? null : (selectedCategoryId ?? this.selectedCategoryId),
+      searchQuery: searchQuery ?? this.searchQuery,
       loading: loading ?? this.loading,
       epgLoading: epgLoading ?? this.epgLoading,
       error: error,
