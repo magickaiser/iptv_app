@@ -15,6 +15,7 @@ class UpdateService {
       final dio = Dio(BaseOptions(
         connectTimeout: const Duration(seconds: 5),
         receiveTimeout: const Duration(seconds: 5),
+        headers: {'User-Agent': 'FrameTV/1.0'},
       ));
       final response = await dio.get(_apiUrl);
       final data = response.data as Map<String, dynamic>;

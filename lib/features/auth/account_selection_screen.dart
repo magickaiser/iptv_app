@@ -63,10 +63,10 @@ class _AccountSelectionScreenState extends ConsumerState<AccountSelectionScreen>
           ),
         );
       }
-    } catch (_) {
+    } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('No se pudo comprobar actualizaciones')),
+          SnackBar(content: Text('Error: ${e.toString().replaceFirst("Exception: ", "")}')),
         );
       }
     }
