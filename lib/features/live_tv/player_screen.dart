@@ -20,23 +20,52 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
   bool _showControls = true;
   bool _showEpg = false;
   int? _selectedEpgIndex;
+  String? _workingUrl;
+  String? _errorMessage;
+  bool _loading = true;
 
   @override
   void initState() {
     super.initState();
-    // Lock to landscape for video viewing
     SystemChrome.setPreferredOrientations([
       DeviceOrientation.landscapeLeft,
       DeviceOrientation.landscapeRight,
     ]);
     Future.microtask(() {
       ref.read(liveTvProvider.notifier).loadEpgForChannel(widget.channel.streamId);
+      _findWorkingUrl();
+    });
+  }
+
+  Future<void> _findWorkingUrl() async {
+    final provider = ref.read(liveTvProvider.notifier);
+    final urls = provider.client.buildStreamUrlList(widget.channel.streamId);
+
+    for (final url in urls) {
+      final result = await provider.client.checkStreamUrl(url);
+      final status = result['status']!;
+      // Accept 2xx responses
+      if (status != 'ERR' && int.tryParse(status) != null) {
+        final code = int.parse(status);
+        if (code >= 200 && code < 300) {
+          setState(() {
+            _workingUrl = url;
+            _loading = false;
+          });
+          return;
+        }
+      }
+    }
+
+    setState(() {
+      _loading = false;
+      _errorMessage =
+          'No se pudo conectar con el stream.\nProbadas: .m3u8, .ts, sin extensión';
     });
   }
 
   @override
   void dispose() {
-    // Restore default orientations
     SystemChrome.setPreferredOrientations([
       DeviceOrientation.portraitUp,
       DeviceOrientation.portraitDown,
@@ -44,11 +73,6 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
       DeviceOrientation.landscapeRight,
     ]);
     super.dispose();
-  }
-
-  List<String> get _streamUrls {
-    final provider = ref.read(liveTvProvider.notifier);
-    return provider.client.buildStreamUrlList(widget.channel.streamId);
   }
 
   @override
@@ -64,8 +88,50 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
         backgroundColor: Colors.black,
         body: Stack(
           children: [
-            // Background: video player
-            VideoPlayerWidget(streamUrls: _streamUrls),
+            // Background: loading / video / error
+            if (_loading)
+              const Center(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    SizedBox(
+                      width: 40,
+                      height: 40,
+                      child: CircularProgressIndicator(color: Colors.white),
+                    ),
+                    SizedBox(height: 12),
+                    Text('Probando conexión...',
+                        style: TextStyle(color: Colors.white54, fontSize: 13)),
+                  ],
+                ),
+              )
+            else if (_workingUrl != null)
+              VideoPlayerWidget(streamUrl: _workingUrl!)
+            else
+              Center(
+                child: Padding(
+                  padding: const EdgeInsets.all(24),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(Icons.cloud_off, color: Colors.orange, size: 48),
+                      const SizedBox(height: 12),
+                      Text(_errorMessage ?? 'Error desconocido',
+                          style: const TextStyle(color: Colors.white, fontSize: 16),
+                          textAlign: TextAlign.center),
+                      const SizedBox(height: 20),
+                      FilledButton.icon(
+                        onPressed: () {
+                          setState(() => _loading = true);
+                          _findWorkingUrl();
+                        },
+                        icon: const Icon(Icons.refresh),
+                        label: const Text('Reintentar'),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
 
             // Tap-to-toggle overlay (behind controls so they stay tappable)
             Positioned.fill(
