@@ -118,8 +118,8 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget> {
               ),
               const SizedBox(height: 6),
               Text(
-                _errorMessage,
-                style: const TextStyle(color: Colors.white54, fontSize: 12),
+                '$_errorMessage\n\n${widget.streamUrl}',
+                style: const TextStyle(color: Colors.white54, fontSize: 11),
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 20),

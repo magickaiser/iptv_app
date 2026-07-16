@@ -85,7 +85,7 @@ class XtreamClient {
   }
 
   /// Build the stream URL for a given stream ID.
-  String buildStreamUrl(int streamId, {String extension = '.ts'}) {
+  String buildStreamUrl(int streamId, {String extension = '.m3u8'}) {
     return '$_baseUrl/live/$_username/$_password/$streamId$extension';
   }
 
