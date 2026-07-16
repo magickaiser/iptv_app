@@ -2,12 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter_vlc_player/flutter_vlc_player.dart';
 
 /// Video player widget using VLC for universal IPTV stream support.
+/// Tries multiple URLs in sequence until one works.
 class VideoPlayerWidget extends StatefulWidget {
-  final String streamUrl;
+  final List<String> streamUrls;
 
   const VideoPlayerWidget({
     super.key,
-    required this.streamUrl,
+    required this.streamUrls,
   });
 
   @override
@@ -16,27 +17,43 @@ class VideoPlayerWidget extends StatefulWidget {
 
 class _VideoPlayerWidgetState extends State<VideoPlayerWidget> {
   VlcPlayerController? _controller;
-  bool _error = false;
-  String _errorMessage = '';
+  int _urlIndex = 0;
+  bool _waiting = true;
 
   @override
   void initState() {
     super.initState();
-    _initPlayer();
+    _tryNextUrl();
   }
 
-  void _initPlayer() {
+  void _tryNextUrl() {
+    if (_urlIndex >= widget.streamUrls.length) {
+      setState(() {
+        _waiting = false; // stays on last player state (VLC shows its own error)
+      });
+      return;
+    }
+
+    final url = widget.streamUrls[_urlIndex];
+
     _controller?.dispose();
     _controller = VlcPlayerController.network(
-      widget.streamUrl,
+      url,
       autoPlay: true,
     );
 
+    setState(() {
+      _waiting = false; // Show VLC immediately, it handles loading internally
+    });
+
     _controller!.addListener(() {
       if (_controller!.value.hasError && mounted) {
-        setState(() {
-          _error = true;
-          _errorMessage = 'Error de reproducción';
+        // Try next URL after a short delay
+        Future.delayed(const Duration(seconds: 3), () {
+          if (mounted) {
+            _urlIndex++;
+            _tryNextUrl();
+          }
         });
       }
     });
@@ -50,36 +67,25 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget> {
 
   @override
   Widget build(BuildContext context) {
-    if (_error) {
-      return Center(
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Icon(Icons.cloud_off, color: Colors.orange, size: 48),
-              const SizedBox(height: 12),
-              const Text('No se pudo cargar el canal',
-                  style: TextStyle(color: Colors.white, fontSize: 16)),
-              const SizedBox(height: 8),
-              Text(_errorMessage,
-                  style: const TextStyle(color: Colors.white54, fontSize: 12),
-                  textAlign: TextAlign.center),
-              const SizedBox(height: 20),
-              FilledButton.icon(
-                onPressed: () {
-                  setState(() => _error = false);
-                  _initPlayer();
-                },
-                icon: const Icon(Icons.refresh),
-                label: const Text('Reintentar'),
-              ),
-            ],
-          ),
+    if (_waiting || _controller == null) {
+      return const Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            SizedBox(
+              width: 40,
+              height: 40,
+              child: CircularProgressIndicator(color: Colors.white),
+            ),
+            SizedBox(height: 12),
+            Text('Conectando...',
+                style: TextStyle(color: Colors.white54, fontSize: 13)),
+          ],
         ),
       );
     }
 
+    // VLC shows its own loading/error/playback states
     return VlcPlayer(
       controller: _controller!,
       aspectRatio: 16 / 9,

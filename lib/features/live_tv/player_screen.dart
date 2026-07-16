@@ -20,9 +20,6 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
   bool _showControls = true;
   bool _showEpg = false;
   int? _selectedEpgIndex;
-  String? _workingUrl;
-  String? _errorMessage;
-  bool _loading = true;
 
   @override
   void initState() {
@@ -33,41 +30,6 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
     ]);
     Future.microtask(() {
       ref.read(liveTvProvider.notifier).loadEpgForChannel(widget.channel.streamId);
-      _findWorkingUrl();
-    });
-  }
-
-  Future<void> _findWorkingUrl() async {
-    final provider = ref.read(liveTvProvider.notifier);
-    final client = provider.client;
-
-    // Build URL list: direct source first if available, then our constructed ones
-    final urls = <String>[];
-    final directSource = widget.channel.directSource;
-    if (directSource != null && directSource.isNotEmpty) {
-      urls.add(directSource);
-    }
-    urls.addAll(client.buildStreamUrlList(widget.channel.streamId));
-
-    for (final url in urls) {
-      final result = await client.checkStreamUrl(url);
-      final status = result['status']!;
-      if (status != 'ERR' && int.tryParse(status) != null) {
-        final code = int.parse(status);
-        if (code >= 200 && code < 300) {
-          setState(() {
-            _workingUrl = url;
-            _loading = false;
-          });
-          return;
-        }
-      }
-    }
-
-    setState(() {
-      _loading = false;
-      _errorMessage = 'No se pudo conectar con el stream.\n'
-          'Probadas: .m3u8, .ts, sin extensión';
     });
   }
 
@@ -80,6 +42,17 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
       DeviceOrientation.landscapeRight,
     ]);
     super.dispose();
+  }
+
+  List<String> get _streamUrls {
+    final provider = ref.read(liveTvProvider.notifier);
+    final urls = <String>[];
+    final directSource = widget.channel.directSource;
+    if (directSource != null && directSource.isNotEmpty) {
+      urls.add(directSource);
+    }
+    urls.addAll(provider.client.buildStreamUrlList(widget.channel.streamId));
+    return urls;
   }
 
   @override
@@ -95,52 +68,10 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
         backgroundColor: Colors.black,
         body: Stack(
           children: [
-            // Background: loading / video / error
-            if (_loading)
-              const Center(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    SizedBox(
-                      width: 40,
-                      height: 40,
-                      child: CircularProgressIndicator(color: Colors.white),
-                    ),
-                    SizedBox(height: 12),
-                    Text('Probando conexión...',
-                        style: TextStyle(color: Colors.white54, fontSize: 13)),
-                  ],
-                ),
-              )
-            else if (_workingUrl != null)
-              VideoPlayerWidget(streamUrl: _workingUrl!)
-            else
-              Center(
-                child: Padding(
-                  padding: const EdgeInsets.all(24),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const Icon(Icons.cloud_off, color: Colors.orange, size: 48),
-                      const SizedBox(height: 12),
-                      Text(_errorMessage ?? 'Error desconocido',
-                          style: const TextStyle(color: Colors.white, fontSize: 16),
-                          textAlign: TextAlign.center),
-                      const SizedBox(height: 20),
-                      FilledButton.icon(
-                        onPressed: () {
-                          setState(() => _loading = true);
-                          _findWorkingUrl();
-                        },
-                        icon: const Icon(Icons.refresh),
-                        label: const Text('Reintentar'),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
+            // Background: video player (VLC handles loading/error internally)
+            VideoPlayerWidget(streamUrls: _streamUrls),
 
-            // Tap-to-toggle overlay (behind controls so they stay tappable)
+            // Tap-to-toggle overlay
             Positioned.fill(
               child: GestureDetector(
                 behavior: HitTestBehavior.translucent,
@@ -151,7 +82,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
             // EPG overlay
             if (_showEpg) _buildEpgOverlay(state.epgPrograms),
 
-            // Top controls (on top of gesture detector)
+            // Top controls
             if (_showControls) _buildTopControls(),
           ],
         ),
