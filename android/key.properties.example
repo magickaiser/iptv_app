@@ -1,0 +1,8 @@
+# Android signing configuration (local development)
+# DO NOT COMMIT real values to the repository!
+# The CI pipeline reads these from GitHub Secrets.
+
+storePassword=YOUR_STORE_PASSWORD
+keyPassword=YOUR_KEY_PASSWORD
+keyAlias=iptv_app
+storeFile=../release-keystore.jks

@@ -1,0 +1,136 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v[0-9]+.[0-9]+.[0-9]+*"
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-release:
+    name: Build & Release
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      # --------------- Parse version from tag ---------------
+      - name: Parse version
+        id: version
+        run: |
+          TAG="${{ github.ref_name }}"
+          # Remove leading 'v'
+          VERSION="${TAG#v}"
+          echo "tag=$TAG" >> $GITHUB_OUTPUT
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "build_number=${{ github.run_number }}" >> $GITHUB_OUTPUT
+          echo "Parsed version: $VERSION"
+
+      # --------------- Setup ---------------
+      - uses: actions/setup-java@v4
+        with:
+          distribution: "temurin"
+          java-version: "17"
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: "3.44.6"
+          channel: "stable"
+          cache: true
+
+      # --------------- Inject version into pubspec ---------------
+      - name: Set app version
+        run: |
+          VERSION="${{ steps.version.outputs.version }}+${{ steps.version.outputs.build_number }}"
+          sed -i "s/^version:.*/version: $VERSION/" pubspec.yaml
+          echo "App version set to $VERSION"
+
+      # --------------- Restore keystore from secret ---------------
+      - name: Decode keystore
+        if: env.KEYSTORE_BASE64 != ''
+        env:
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+        run: |
+          echo "$KEYSTORE_BASE64" | base64 -d > android/release-keystore.jks
+          echo "Keystore restored"
+
+      - name: Create key.properties (from secrets)
+        env:
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+        run: |
+          cat > android/key.properties << EOF
+          storePassword=${KEYSTORE_PASSWORD}
+          keyPassword=${KEY_PASSWORD}
+          keyAlias=${KEY_ALIAS}
+          storeFile=../release-keystore.jks
+          EOF
+
+      - name: Create dummy key.properties (no secrets)
+        if: env.KEYSTORE_BASE64 == ''
+        run: |
+          echo "⚠️ No keystore secret found — release will be signed with debug keys"
+          # Create a dummy so Gradle doesn't fail
+          cat > android/key.properties << EOF
+          storePassword=dummy
+          keyPassword=dummy
+          keyAlias=dummy
+          storeFile=dummy.jks
+          EOF
+
+      # --------------- Dependencies ---------------
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Run tests
+        run: flutter test --reporter expanded
+
+      # --------------- Build ---------------
+      - name: Build release APK
+        run: flutter build apk --release
+
+      - name: Build release AAB
+        run: flutter build appbundle --release
+
+      # --------------- Rename artifacts ---------------
+      - name: Rename artifacts
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          cp build/app/outputs/flutter-apk/app-release.apk iptv_app-${VERSION}.apk
+          cp build/app/outputs/bundle/release/app-release.aab iptv_app-${VERSION}.aab
+          ls -lh iptv_app-*.apk iptv_app-*.aab
+
+      # --------------- Generate changelog ---------------
+      - name: Generate changelog
+        id: changelog
+        run: |
+          # Get commits since last tag
+          PREV_TAG=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || echo "")
+          if [ -z "$PREV_TAG" ]; then
+            echo "## Cambios" > CHANGELOG.md
+            echo "" >> CHANGELOG.md
+            git log --oneline --no-decorate >> CHANGELOG.md
+          else
+            echo "## Cambios desde $PREV_TAG" > CHANGELOG.md
+            echo "" >> CHANGELOG.md
+            git log --oneline --no-decorate ${PREV_TAG}..HEAD >> CHANGELOG.md
+          fi
+          cat CHANGELOG.md
+
+      # --------------- Create GitHub Release ---------------
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: "${{ steps.version.outputs.tag }}"
+          body_path: CHANGELOG.md
+          files: |
+            iptv_app-*.apk
+            iptv_app-*.aab
+          draft: false
+          prerelease: ${{ contains(github.ref_name, 'alpha') || contains(github.ref_name, 'beta') || contains(github.ref_name, 'rc') }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
