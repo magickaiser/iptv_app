@@ -152,7 +152,6 @@ class _AccountSelectionScreenState extends ConsumerState<AccountSelectionScreen>
           ),
 
           if (state == AuthState.loading) const LinearProgressIndicator(),
-          if (state == AuthState.error) _buildError(),
         ],
       ),
       floatingActionButton: FloatingActionButton.extended(
@@ -208,6 +207,31 @@ class _AccountSelectionScreenState extends ConsumerState<AccountSelectionScreen>
 
   Future<void> _connect(XtreamAccount account) async {
     await ref.read(loginProvider.notifier).connectAccount(account);
+    final error = ref.read(loginProvider.notifier).errorMessage;
+    if (error != null && mounted) {
+      showDialog(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: const Text('Error de conexión'),
+          content: Text(error),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.pop(ctx);
+                Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => EditAccountScreen(account: account)),
+                );
+              },
+              child: const Text('Editar'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Cerrar'),
+            ),
+          ],
+        ),
+      );
+    }
   }
 
   void _addAccount() {
