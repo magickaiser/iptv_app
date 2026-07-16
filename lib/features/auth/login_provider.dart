@@ -102,6 +102,17 @@ class LoginProvider extends StateNotifier<AuthState> {
     }
   }
 
+  /// Update an existing account's data.
+  Future<void> updateAccount(XtreamAccount updated, String? newPassword) async {
+    await _storage.updateAccount(updated);
+    if (newPassword != null && newPassword.isNotEmpty) {
+      await _storage.updatePassword(updated.id, newPassword);
+    }
+    final index = _accounts.indexWhere((a) => a.id == updated.id);
+    if (index != -1) _accounts[index] = updated;
+    _refreshAccounts();
+  }
+
   /// Delete an account.
   Future<void> deleteAccount(String id) async {
     await _storage.deleteAccount(id);

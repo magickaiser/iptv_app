@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../core/api/models/xtream_account.dart';
 import '../../core/services/update_service.dart';
+import 'edit_account_screen.dart';
 import 'login_provider.dart';
 import 'login_screen.dart';
 
@@ -248,9 +249,22 @@ class _AccountCard extends StatelessWidget {
         leading: const CircleAvatar(child: Icon(Icons.person)),
         title: Text(account.name, style: const TextStyle(fontWeight: FontWeight.bold)),
         subtitle: Text(account.server, style: const TextStyle(fontSize: 12)),
-        trailing: IconButton(
-          icon: const Icon(Icons.delete_outline, color: Colors.red),
-          onPressed: onDelete,
+        trailing: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            IconButton(
+              icon: const Icon(Icons.edit_outlined, color: Colors.blue),
+              onPressed: () {
+                Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => EditAccountScreen(account: account)),
+                );
+              },
+            ),
+            IconButton(
+              icon: const Icon(Icons.delete_outline, color: Colors.red),
+              onPressed: onDelete,
+            ),
+          ],
         ),
         onTap: onTap,
       ),
