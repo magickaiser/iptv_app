@@ -76,7 +76,11 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Icon(Icons.live_tv, size: 80, color: Colors.blue),
+                const Image(
+                  image: AssetImage('assets/icon.png'),
+                  width: 80,
+                  height: 80,
+                ),
                 const SizedBox(height: 16),
                 const Text('Nueva cuenta',
                     style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),

@@ -105,7 +105,11 @@ class _AccountSelectionScreenState extends ConsumerState<AccountSelectionScreen>
                       child: Column(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          const Icon(Icons.live_tv, size: 64, color: Colors.blueGrey),
+                          const Image(
+                            image: AssetImage('assets/icon.png'),
+                            width: 80,
+                            height: 80,
+                          ),
                           const SizedBox(height: 16),
                           const Text('No hay cuentas guardadas',
                               style: TextStyle(fontSize: 16, color: Colors.grey)),
