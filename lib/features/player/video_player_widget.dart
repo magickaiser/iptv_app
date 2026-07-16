@@ -1,9 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:video_player/video_player.dart';
-import 'package:chewie/chewie.dart';
+import 'package:flutter_vlc_player/flutter_vlc_player.dart';
 
-/// Video player widget using video_player + chewie.
-/// Tries multiple stream URLs in sequence.
+/// Video player widget using VLC for universal IPTV stream support.
 class VideoPlayerWidget extends StatefulWidget {
   final List<String> streamUrls;
 
@@ -17,8 +15,7 @@ class VideoPlayerWidget extends StatefulWidget {
 }
 
 class _VideoPlayerWidgetState extends State<VideoPlayerWidget> {
-  VideoPlayerController? _videoController;
-  ChewieController? _chewieController;
+  VlcPlayerController? _controller;
   bool _initialized = false;
   bool _error = false;
   String _errorMessage = '';
@@ -41,68 +38,33 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget> {
 
     final url = widget.streamUrls[_urlIndex];
 
-    try {
-      await _videoController?.dispose();
-      _chewieController?.dispose();
-    } catch (_) {}
+    await _controller?.stop();
+    await _controller?.dispose();
 
-    _videoController = VideoPlayerController.networkUrl(
-      Uri.parse(url),
-      httpHeaders: {
-        'User-Agent': 'VLC/3.0.18',
-        'Accept': '*/*',
-      },
-      videoPlayerOptions: VideoPlayerOptions(
-        mixWithOthers: false,
-        allowBackgroundPlayback: false,
-      ),
+    _controller = VlcPlayerController.network(
+      url,
+      autoPlay: true,
     );
 
     try {
-      await _videoController!.initialize().timeout(
-        const Duration(seconds: 10),
-        onTimeout: () => throw Exception('Timeout'),
-      );
+      await _controller!.initialize();
+      // Give VLC a moment to connect
+      await Future.delayed(const Duration(seconds: 3));
 
-      _chewieController = ChewieController(
-        videoPlayerController: _videoController!,
-        autoPlay: true,
-        looping: false,
-        allowFullScreen: false,
-        showControls: true,
-        errorBuilder: (context, errorMessage) {
-          return Center(
-            child: Padding(
-              padding: const EdgeInsets.all(24),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Icon(Icons.error_outline, color: Colors.orange, size: 48),
-                  const SizedBox(height: 12),
-                  const Text('Error de reproducción',
-                      style: TextStyle(color: Colors.white, fontSize: 16)),
-                  const SizedBox(height: 8),
-                  Text(errorMessage,
-                      style: const TextStyle(color: Colors.white70, fontSize: 13),
-                      textAlign: TextAlign.center),
-                ],
-              ),
-            ),
-          );
-        },
-        materialProgressColors: ChewieProgressColors(
-          playedColor: Colors.blue,
-          handleColor: Colors.blueAccent,
-          bufferedColor: Colors.grey.shade700,
-        ),
-      );
-      if (mounted) setState(() => _initialized = true);
+      if (_controller!.value.isInitialized) {
+        if (mounted) setState(() => _initialized = true);
+      } else {
+        _urlIndex++;
+        if (mounted) {
+          setState(() => _errorMessage = 'Stream no inició: $url');
+        }
+        await _tryNextUrl();
+      }
     } catch (e) {
-      // Try next URL
       _urlIndex++;
       if (mounted) {
         setState(() {
-          _errorMessage = '${widget.streamUrls[_urlIndex - 1]}\n${e.toString().replaceFirst('Exception: ', '')}';
+          _errorMessage = '$url\n${e.toString().replaceFirst('Exception: ', '')}';
         });
       }
       await _tryNextUrl();
@@ -111,8 +73,8 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget> {
 
   @override
   void dispose() {
-    _videoController?.dispose();
-    _chewieController?.dispose();
+    _controller?.stop();
+    _controller?.dispose();
     super.dispose();
   }
 
@@ -153,7 +115,7 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget> {
       );
     }
 
-    if (!_initialized || _chewieController == null) {
+    if (!_initialized || _controller == null) {
       return const Center(
         child: SizedBox(
           width: 40,
@@ -163,6 +125,16 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget> {
       );
     }
 
-    return Chewie(controller: _chewieController!);
+    return VlcPlayer(
+      controller: _controller!,
+      aspectRatio: 16 / 9,
+      placeholder: const Center(
+        child: SizedBox(
+          width: 40,
+          height: 40,
+          child: CircularProgressIndicator(color: Colors.white),
+        ),
+      ),
+    );
   }
 }
