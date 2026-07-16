@@ -43,6 +43,9 @@ dependencies:
 
   # Utilities
   intl: ^0.19.0
+  uuid: ^4.5.1
+  url_launcher: ^6.3.0
+  package_info_plus: ^9.0.1
 
   # Video playback (media_kit con libs nativas)
   media_kit: ^1.1.11

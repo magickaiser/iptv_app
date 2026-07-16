@@ -2,37 +2,26 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'login_provider.dart';
 
-/// Login screen for Xtream Codes credentials.
+/// Login screen for adding/editing an Xtream Codes account.
 class LoginScreen extends ConsumerStatefulWidget {
-  const LoginScreen({super.key});
+  final bool isNewAccount;
+
+  const LoginScreen({super.key, this.isNewAccount = true});
 
   @override
   ConsumerState<LoginScreen> createState() => _LoginScreenState();
 }
 
 class _LoginScreenState extends ConsumerState<LoginScreen> {
+  final _nameController = TextEditingController();
   final _serverController = TextEditingController();
   final _usernameController = TextEditingController();
   final _passwordController = TextEditingController();
   bool _obscurePassword = true;
 
   @override
-  void initState() {
-    super.initState();
-    _prefillSavedCredentials();
-  }
-
-  void _prefillSavedCredentials() {
-    // Pre-fill from saved credentials so user can just re-login
-    final info = ref.read(loginProvider.notifier).savedInfo;
-    if (info != null) {
-      _serverController.text = info.serverUrl;
-      _usernameController.text = info.username;
-    }
-  }
-
-  @override
   void dispose() {
+    _nameController.dispose();
     _serverController.dispose();
     _usernameController.dispose();
     _passwordController.dispose();
@@ -40,6 +29,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   }
 
   Future<void> _login() async {
+    final name = _nameController.text.trim();
     final server = _serverController.text.trim();
     final username = _usernameController.text.trim();
     final password = _passwordController.text;
@@ -51,8 +41,11 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       return;
     }
 
-    await ref.read(loginProvider.notifier).login(
-          serverUrl: server,
+    final displayName = name.isEmpty ? username : name;
+
+    await ref.read(loginProvider.notifier).addAccount(
+          name: displayName,
+          server: server,
           username: username,
           password: password,
         );
@@ -61,10 +54,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(loginProvider);
-    final savedInfo = ref.read(loginProvider.notifier).savedInfo;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('FrameTV')),
+      appBar: AppBar(title: const Text('Añadir cuenta')),
       body: Center(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(24),
@@ -75,47 +67,21 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               children: [
                 const Icon(Icons.live_tv, size: 80, color: Colors.blue),
                 const SizedBox(height: 16),
-                const Text(
-                  'Inicia sesión',
-                  style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-                ),
-                const SizedBox(height: 8),
-                const Text(
-                  'Introduce tus credenciales Xtream Codes',
-                  style: TextStyle(color: Colors.grey),
-                ),
-                const SizedBox(height: 24),
+                const Text('Nueva cuenta',
+                    style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
+                const SizedBox(height: 32),
 
-                // Quick login button (if credentials are saved)
-                if (savedInfo != null) ...[
-                  SizedBox(
-                    width: double.infinity,
-                    height: 48,
-                    child: OutlinedButton.icon(
-                      icon: const Icon(Icons.person, size: 20),
-                      label: Text('Reanudar sesión como ${savedInfo.username}'),
-                      onPressed: state == AuthState.loading ? null : _login,
-                      style: OutlinedButton.styleFrom(
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                      ),
-                    ),
+                // Name
+                TextField(
+                  controller: _nameController,
+                  decoration: const InputDecoration(
+                    labelText: 'Nombre (opcional)',
+                    hintText: 'Mi lista IPTV',
+                    prefixIcon: Icon(Icons.label_outline),
+                    border: OutlineInputBorder(),
                   ),
-                  const SizedBox(height: 16),
-                  const Row(
-                    children: [
-                      Expanded(child: Divider()),
-                      Padding(
-                        padding: EdgeInsets.symmetric(horizontal: 12),
-                        child: Text('o introduce nuevos datos',
-                            style: TextStyle(color: Colors.grey, fontSize: 12)),
-                      ),
-                      Expanded(child: Divider()),
-                    ],
-                  ),
-                  const SizedBox(height: 16),
-                ],
+                ),
+                const SizedBox(height: 16),
 
                 // Server URL
                 TextField(
@@ -150,38 +116,30 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     prefixIcon: const Icon(Icons.lock),
                     border: const OutlineInputBorder(),
                     suffixIcon: IconButton(
-                      icon: Icon(_obscurePassword
-                          ? Icons.visibility_off
-                          : Icons.visibility),
-                      onPressed: () =>
-                          setState(() => _obscurePassword = !_obscurePassword),
+                      icon: Icon(_obscurePassword ? Icons.visibility_off : Icons.visibility),
+                      onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
                     ),
                   ),
                   onSubmitted: (_) => _login(),
                 ),
                 const SizedBox(height: 24),
 
-                // Login button
                 SizedBox(
                   width: double.infinity,
                   height: 48,
                   child: FilledButton(
-                    onPressed:
-                        state == AuthState.loading ? null : _login,
+                    onPressed: state == AuthState.loading ? null : _login,
                     child: state == AuthState.loading
                         ? const SizedBox(
                             width: 24,
                             height: 24,
                             child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              color: Colors.white,
-                            ),
+                                strokeWidth: 2, color: Colors.white),
                           )
                         : const Text('Conectar', style: TextStyle(fontSize: 16)),
                   ),
                 ),
 
-                // Error message
                 if (state == AuthState.error) ...[
                   const SizedBox(height: 16),
                   Container(
@@ -196,8 +154,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         const SizedBox(width: 8),
                         Expanded(
                           child: Text(
-                            ref.read(loginProvider.notifier).errorMessage ??
-                                'Error desconocido',
+                            ref.read(loginProvider.notifier).errorMessage ?? 'Error',
                             style: const TextStyle(color: Colors.red),
                           ),
                         ),
@@ -205,6 +162,12 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     ),
                   ),
                 ],
+
+                const SizedBox(height: 32),
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('Volver'),
+                ),
               ],
             ),
           ),

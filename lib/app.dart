@@ -1,13 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'features/auth/login_provider.dart';
-import 'features/auth/login_screen.dart';
+import 'features/auth/account_selection_screen.dart';
 import 'features/live_tv/categories_screen.dart';
 import 'features/live_tv/channels_screen.dart';
 import 'features/live_tv/live_tv_provider.dart';
 import 'core/theme/mobile_theme.dart';
 
-/// Root widget that adapts to auth state: login vs main app.
+/// Root widget.
 class IptvApp extends ConsumerStatefulWidget {
   const IptvApp({super.key});
 
@@ -19,8 +19,7 @@ class _IptvAppState extends ConsumerState<IptvApp> {
   @override
   void initState() {
     super.initState();
-    // Auto-login with saved credentials
-    Future.microtask(() => ref.read(loginProvider.notifier).tryAutoLogin());
+    Future.microtask(() => ref.read(loginProvider.notifier).loadAccounts());
   }
 
   @override
@@ -31,63 +30,9 @@ class _IptvAppState extends ConsumerState<IptvApp> {
       title: 'FrameTV',
       theme: MobileTheme.theme,
       debugShowCheckedModeBanner: false,
-      home: _buildHome(authState),
-    );
-  }
-
-  Widget _buildHome(AuthState authState) {
-    switch (authState) {
-      case AuthState.initial:
-        // Show login, but if we have saved credentials (still loading info), show splash
-        final hasSaved = ref.read(loginProvider.notifier).savedInfo != null;
-        if (hasSaved) {
-          // Auto-login in progress but already checking
-          return const _SplashScreen();
-        }
-        return const LoginScreen();
-
-      case AuthState.loading:
-        return const _SplashScreen();
-
-      case AuthState.authenticated:
-        return const _MainScreen();
-
-      case AuthState.error:
-        return const LoginScreen();
-    }
-  }
-}
-
-/// Loading splash shown while auto-login tries to connect.
-class _SplashScreen extends StatelessWidget {
-  const _SplashScreen();
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Theme.of(context).colorScheme.surface,
-      body: Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Icon(Icons.live_tv, size: 80, color: Colors.blue),
-            const SizedBox(height: 24),
-            const SizedBox(
-              width: 32,
-              height: 32,
-              child: CircularProgressIndicator(strokeWidth: 3),
-            ),
-            const SizedBox(height: 20),
-            Text(
-              'Conectando...',
-              style: TextStyle(
-                color: Theme.of(context).colorScheme.onSurface,
-                fontSize: 16,
-              ),
-            ),
-          ],
-        ),
-      ),
+      home: authState == AuthState.authenticated
+          ? const _MainScreen()
+          : const AccountSelectionScreen(),
     );
   }
 }
@@ -114,14 +59,22 @@ class _MainScreenState extends ConsumerState<_MainScreen> {
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(liveTvProvider);
+    final account = ref.read(loginProvider.notifier).currentAccount;
 
     return Scaffold(
       appBar: AppBar(
         title: const Text('TV en vivo'),
         actions: [
+          if (account != null)
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8),
+              child: Center(
+                child: Text(account.name, style: const TextStyle(fontSize: 13)),
+              ),
+            ),
           IconButton(
-            icon: const Icon(Icons.logout),
-            tooltip: 'Cerrar sesión',
+            icon: const Icon(Icons.swap_horiz),
+            tooltip: 'Cambiar cuenta',
             onPressed: () => ref.read(loginProvider.notifier).logout(),
           ),
         ],
@@ -133,10 +86,7 @@ class _MainScreenState extends ConsumerState<_MainScreen> {
           if (state.error != null)
             Padding(
               padding: const EdgeInsets.all(16),
-              child: Text(
-                state.error!,
-                style: const TextStyle(color: Colors.red),
-              ),
+              child: Text(state.error!, style: const TextStyle(color: Colors.red)),
             ),
           const ChannelsScreen(),
         ],
