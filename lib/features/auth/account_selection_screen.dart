@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:open_filex/open_filex.dart';
-import 'package:url_launcher/url_launcher.dart';
 import '../../core/api/models/xtream_account.dart';
 import '../../core/services/update_service.dart';
 import 'edit_account_screen.dart';
@@ -221,7 +220,7 @@ class _AccountSelectionScreenState extends ConsumerState<AccountSelectionScreen>
       content: Text('$_latestVersion disponible'),
       actions: [
         TextButton(
-          onPressed: () => launchUrl(Uri.parse('https://github.com/magickaiser/iptv_app/releases')),
+          onPressed: () => _downloadAndInstall(_latestVersion!),
           child: const Text('Descargar', style: TextStyle(color: Colors.white)),
         ),
         TextButton(

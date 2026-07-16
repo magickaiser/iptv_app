@@ -1,4 +1,5 @@
 import 'package:dio/dio.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 
 /// Checks GitHub for latest FrameTV release.
@@ -20,6 +21,11 @@ class UpdateService {
     final data = response.data as Map<String, dynamic>;
     final remote = data['tag_name'] as String?;
     return (local: local, remote: remote);
+  }
+
+  /// Returns true if remote version is newer than local.
+  static bool isNewer(String remote, String local) {
+    return _compareVersions(remote, local) > 0;
   }
 
   /// Get the download URL for the APK in a specific release.
@@ -47,7 +53,7 @@ class UpdateService {
     final apkUrl = await getApkUrl(version);
     if (apkUrl == null) throw Exception('No se encontró el APK');
 
-    final dir = await Dio().getApplicationDocumentsDirectory();
+    final dir = await getApplicationDocumentsDirectory();
     final path = '${dir.path}/frametv-$version.apk';
 
     final dio = Dio(BaseOptions(
