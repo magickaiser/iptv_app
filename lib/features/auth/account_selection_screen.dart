@@ -40,7 +40,7 @@ class _AccountSelectionScreenState extends ConsumerState<AccountSelectionScreen>
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(loginProvider);
-    final accounts = ref.read(loginProvider.notifier).accounts;
+    final accounts = ref.watch(accountsProvider);
 
     return Scaffold(
       appBar: AppBar(

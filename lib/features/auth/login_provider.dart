@@ -10,22 +10,26 @@ enum AuthState { initial, loading, authenticated, error }
 /// Manages authentication with multi-account support.
 class LoginProvider extends StateNotifier<AuthState> {
   final AccountStorage _storage;
+  final void Function(List<XtreamAccount>) _onAccountsChanged;
 
   XtreamClient? _client;
   XtreamAccount? _currentAccount;
   String? _errorMessage;
   List<XtreamAccount> _accounts = [];
 
-  LoginProvider(this._storage) : super(AuthState.initial);
+  LoginProvider(this._storage, this._onAccountsChanged) : super(AuthState.initial);
 
   XtreamClient? get client => _client;
   XtreamAccount? get currentAccount => _currentAccount;
   String? get errorMessage => _errorMessage;
   List<XtreamAccount> get accounts => _accounts;
 
+  void _refreshAccounts() => _onAccountsChanged(List.unmodifiable(_accounts));
+
   /// Load saved accounts. Called at app start.
   Future<void> loadAccounts() async {
     _accounts = await _storage.loadAll();
+    _refreshAccounts();
   }
 
   /// Add a new account and save credentials.
@@ -56,6 +60,7 @@ class LoginProvider extends StateNotifier<AuthState> {
       _accounts.add(account);
       _client = client;
       _currentAccount = account;
+      _refreshAccounts();
       state = AuthState.authenticated;
     } catch (e) {
       _errorMessage = e.toString().replaceFirst('Exception: ', '');
@@ -102,8 +107,11 @@ class LoginProvider extends StateNotifier<AuthState> {
       _currentAccount = null;
       _client = null;
     }
-    // Notify UI to refresh
-    state = AuthState.initial;
+    _refreshAccounts();
+    if (state == AuthState.initial) {
+      // Force rebuild: StateNotifier skips re-emitting same state
+      state = AuthState.initial;
+    }
   }
 
   /// Logout: disconnect but keep accounts.
@@ -119,5 +127,10 @@ class LoginProvider extends StateNotifier<AuthState> {
 final loginProvider =
     StateNotifierProvider<LoginProvider, AuthState>((ref) {
   final storage = AccountStorage();
-  return LoginProvider(storage);
+  return LoginProvider(storage, (accounts) {
+    ref.read(accountsProvider.notifier).state = accounts;
+  });
 });
+
+/// Reactive list of saved accounts.
+final accountsProvider = StateProvider<List<XtreamAccount>>((ref) => []);
