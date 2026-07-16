@@ -64,7 +64,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     final savedInfo = ref.read(loginProvider.notifier).savedInfo;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('IPTV Player')),
+      appBar: AppBar(title: const Text('FrameTV')),
       body: Center(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(24),

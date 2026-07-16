@@ -6,7 +6,7 @@ plugins {
 }
 
 android {
-    namespace = "com.magickaiser.iptv_app"
+    namespace = "com.magickaiser.frametv"
     compileSdk = flutter.compileSdkVersion
     ndkVersion = flutter.ndkVersion
 
@@ -16,7 +16,7 @@ android {
     }
 
     defaultConfig {
-        applicationId = "com.magickaiser.iptv_app"
+        applicationId = "com.magickaiser.frametv"
         minSdk = flutter.minSdkVersion
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode

@@ -28,7 +28,7 @@ class _IptvAppState extends ConsumerState<IptvApp> {
     final authState = ref.watch(loginProvider);
 
     return MaterialApp(
-      title: 'IPTV Player',
+      title: 'FrameTV',
       theme: MobileTheme.theme,
       debugShowCheckedModeBanner: false,
       home: _buildHome(authState),

@@ -1,4 +1,4 @@
-package com.magickaiser.iptv_app
+package com.magickaiser.frametv
 
 import io.flutter.embedding.android.FlutterActivity
 
