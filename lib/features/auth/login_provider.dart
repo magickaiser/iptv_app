@@ -33,6 +33,7 @@ class LoginProvider extends StateNotifier<AuthState> {
   }
 
   /// Add a new account and save credentials.
+  /// Saves FIRST, then authenticates. Account persists even if auth fails.
   Future<void> addAccount({
     required String name,
     required String server,
@@ -43,6 +44,17 @@ class LoginProvider extends StateNotifier<AuthState> {
     _errorMessage = null;
 
     try {
+      // Always save credentials first (so they persist even if server is down)
+      final account = await _storage.saveAccount(
+        name: name,
+        server: server,
+        username: username,
+        password: password,
+      );
+      _accounts.add(account);
+      _refreshAccounts();
+
+      // Now try to authenticate
       final client = XtreamClient(
         serverUrl: server,
         username: username,
@@ -50,20 +62,11 @@ class LoginProvider extends StateNotifier<AuthState> {
       );
       await client.authenticate();
 
-      final account = await _storage.saveAccount(
-        name: name,
-        server: server,
-        username: username,
-        password: password,
-      );
-
-      _accounts.add(account);
       _client = client;
       _currentAccount = account;
-      _refreshAccounts();
       state = AuthState.authenticated;
     } catch (e) {
-      _errorMessage = e.toString().replaceFirst('Exception: ', '');
+      _errorMessage = 'Cuenta guardada. ${e.toString().replaceFirst("Exception: ", "")}';
       state = AuthState.error;
     }
   }
