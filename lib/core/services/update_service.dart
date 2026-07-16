@@ -23,15 +23,8 @@ class UpdateService {
     }
   }
 
-  /// Returns true if a newer version is available.
-  static Future<bool> isUpdateAvailable() async {
-    final local = await _localVersion();
-    final remote = await checkLatestVersion();
-    if (remote == null) return false;
-    return _compareVersions(remote, local) > 0;
-  }
-
-  static Future<String> _localVersion() async {
+  /// Returns the local app version.
+  static Future<String> getLocalVersion() async {
     try {
       final info = await PackageInfo.fromPlatform();
       return info.version;
@@ -40,17 +33,25 @@ class UpdateService {
     }
   }
 
+  /// Returns true if a newer version is available.
+  static Future<bool> isUpdateAvailable() async {
+    final local = await getLocalVersion();
+    final remote = await checkLatestVersion();
+    if (remote == null) return false;
+    return _compareVersions(remote, local) > 0;
+  }
+
   /// Compare: returns >0 if v1 > v2.
   static int _compareVersions(String v1, String v2) {
-    final parse = (String v) {
+    int parse(String v, int i) {
       final parts = v.replaceAll('v', '').split('.');
-      return parts.map((e) => int.tryParse(e) ?? 0).toList();
-    };
-    final p1 = parse(v1);
-    final p2 = parse(v2);
+      return i < parts.length ? (int.tryParse(parts[i]) ?? 0) : 0;
+    }
     for (int i = 0; i < 3; i++) {
-      if (p1[i] > p2[i]) return 1;
-      if (p1[i] < p2[i]) return -1;
+      final a = parse(v1, i);
+      final b = parse(v2, i);
+      if (a > b) return 1;
+      if (a < b) return -1;
     }
     return 0;
   }

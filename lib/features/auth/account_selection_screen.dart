@@ -17,24 +17,68 @@ class AccountSelectionScreen extends ConsumerStatefulWidget {
 class _AccountSelectionScreenState extends ConsumerState<AccountSelectionScreen> {
   bool _updateAvailable = false;
   String? _latestVersion;
+  String _localVersion = '...';
 
   @override
   void initState() {
     super.initState();
+    _loadVersion();
     _checkUpdate();
   }
 
+  Future<void> _loadVersion() async {
+    final v = await UpdateService.getLocalVersion();
+    if (mounted) setState(() => _localVersion = v);
+  }
+
   Future<void> _checkUpdate() async {
+    setState(() {}); // trigger loading indicator
     try {
       final available = await UpdateService.isUpdateAvailable();
       final latest = await UpdateService.checkLatestVersion();
-      if (mounted && available) {
+      if (!mounted) return;
+      if (available) {
         setState(() {
           _updateAvailable = true;
           _latestVersion = latest;
         });
+        _showUpdateDialog(latest!);
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Ya tienes la última versión ($_localVersion)'),
+            backgroundColor: Colors.green,
+            duration: const Duration(seconds: 2),
+          ),
+        );
       }
-    } catch (_) {}
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('No se pudo comprobar actualizaciones')),
+        );
+      }
+    }
+  }
+
+  void _showUpdateDialog(String version) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Actualización disponible'),
+        content: Text('Versión $version está disponible.\nTu versión: $_localVersion\n¿Quieres descargarla?'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Ahora no')),
+          FilledButton(
+            onPressed: () {
+              Navigator.pop(ctx);
+              launchUrl(Uri.parse('https://github.com/magickaiser/iptv_app/releases'));
+            },
+            child: const Text('Descargar'),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -76,7 +120,7 @@ class _AccountSelectionScreenState extends ConsumerState<AccountSelectionScreen>
                   )
                 : ListView.builder(
                     padding: const EdgeInsets.all(16),
-                    itemCount: accounts.length + 1, // +1 for "Add" card
+                    itemCount: accounts.length + 1,
                     itemBuilder: (context, index) {
                       if (index < accounts.length) {
                         return _AccountCard(
@@ -85,7 +129,6 @@ class _AccountSelectionScreenState extends ConsumerState<AccountSelectionScreen>
                           onDelete: () => _delete(accounts[index]),
                         );
                       }
-                      // "Add new" card
                       return Card(
                         margin: const EdgeInsets.only(top: 12),
                         child: ListTile(
@@ -98,15 +141,19 @@ class _AccountSelectionScreenState extends ConsumerState<AccountSelectionScreen>
                   ),
           ),
 
-          // Loading overlay
-          if (state == AuthState.loading)
-            const LinearProgressIndicator(),
+          // Version text
+          Padding(
+            padding: const EdgeInsets.only(bottom: 8),
+            child: Text(
+              'v$_localVersion',
+              style: TextStyle(color: Colors.grey[600], fontSize: 12),
+            ),
+          ),
 
-          // Error
+          if (state == AuthState.loading) const LinearProgressIndicator(),
           if (state == AuthState.error) _buildError(),
         ],
       ),
-      // Manual update check button
       floatingActionButton: FloatingActionButton.extended(
         onPressed: _checkUpdate,
         icon: const Icon(Icons.system_update),
@@ -122,8 +169,7 @@ class _AccountSelectionScreenState extends ConsumerState<AccountSelectionScreen>
       content: Text('$_latestVersion disponible'),
       actions: [
         TextButton(
-          onPressed: () => launchUrl(Uri.parse(
-              'https://github.com/magickaiser/iptv_app/releases')),
+          onPressed: () => launchUrl(Uri.parse('https://github.com/magickaiser/iptv_app/releases')),
           child: const Text('Descargar', style: TextStyle(color: Colors.white)),
         ),
         TextButton(
@@ -165,9 +211,7 @@ class _AccountSelectionScreenState extends ConsumerState<AccountSelectionScreen>
 
   void _addAccount() {
     Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (_) => const LoginScreen(isNewAccount: true),
-      ),
+      MaterialPageRoute(builder: (_) => const LoginScreen()),
     );
   }
 
@@ -194,11 +238,7 @@ class _AccountCard extends StatelessWidget {
   final VoidCallback onTap;
   final VoidCallback onDelete;
 
-  const _AccountCard({
-    required this.account,
-    required this.onTap,
-    required this.onDelete,
-  });
+  const _AccountCard({required this.account, required this.onTap, required this.onDelete});
 
   @override
   Widget build(BuildContext context) {
