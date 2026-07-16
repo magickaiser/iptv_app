@@ -8,22 +8,18 @@ class UpdateService {
   static const _apiUrl =
       'https://api.github.com/repos/$_repoOwner/$_repoName/releases/latest';
 
-  /// Returns (localVersion, latestVersion) or null on error.
-  static Future<({String local, String? remote})?> check() async {
-    try {
-      final local = await _localVersion();
-      final dio = Dio(BaseOptions(
-        connectTimeout: const Duration(seconds: 5),
-        receiveTimeout: const Duration(seconds: 5),
-        headers: {'User-Agent': 'FrameTV/1.0'},
-      ));
-      final response = await dio.get(_apiUrl);
-      final data = response.data as Map<String, dynamic>;
-      final remote = data['tag_name'] as String?;
-      return (local: local, remote: remote);
-    } catch (_) {
-      return null;
-    }
+  /// Returns (localVersion, latestVersion). Throws on HTTP error.
+  static Future<({String local, String? remote})> check() async {
+    final local = await _localVersion();
+    final dio = Dio(BaseOptions(
+      connectTimeout: const Duration(seconds: 5),
+      receiveTimeout: const Duration(seconds: 5),
+      headers: {'User-Agent': 'FrameTV/1.0'},
+    ));
+    final response = await dio.get(_apiUrl);
+    final data = response.data as Map<String, dynamic>;
+    final remote = data['tag_name'] as String?;
+    return (local: local, remote: remote);
   }
 
   /// Returns true if remote version is newer than local.

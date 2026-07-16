@@ -28,22 +28,16 @@ class _AccountSelectionScreenState extends ConsumerState<AccountSelectionScreen>
   }
 
   Future<void> _loadVersion() async {
-    final result = await UpdateService.check();
-    if (result != null && mounted) {
-      setState(() => _localVersion = result.local);
-    }
+    try {
+      final result = await UpdateService.check();
+      if (mounted) setState(() => _localVersion = result.local);
+    } catch (_) {}
   }
 
   Future<void> _checkUpdate() async {
     try {
       final result = await UpdateService.check();
       if (!mounted) return;
-      if (result == null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('No se pudo comprobar actualizaciones')),
-        );
-        return;
-      }
       final local = result.local;
       final remote = result.remote;
       setState(() => _localVersion = local);
