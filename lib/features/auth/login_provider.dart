@@ -111,12 +111,17 @@ class LoginProvider extends StateNotifier<AuthState> {
   }
 
   Future<SavedCredentialsInfo?> _loadSavedInfo() async {
-    final creds = await _storage.loadCredentials();
-    if (creds == null) return null;
-    return SavedCredentialsInfo(
-      serverUrl: creds['server']!,
-      username: creds['username']!,
-    );
+    try {
+      final creds = await _storage.loadCredentials();
+      if (creds == null) return null;
+      return SavedCredentialsInfo(
+        serverUrl: creds['server']!,
+        username: creds['username']!,
+      );
+    } catch (_) {
+      // Plugin not available (e.g., in test environment)
+      return null;
+    }
   }
 }
 

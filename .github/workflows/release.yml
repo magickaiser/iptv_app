@@ -100,9 +100,9 @@ jobs:
       - name: Rename artifacts
         run: |
           VERSION="${{ steps.version.outputs.version }}"
-          cp build/app/outputs/flutter-apk/app-release.apk iptv_app-${VERSION}.apk
-          cp build/app/outputs/bundle/release/app-release.aab iptv_app-${VERSION}.aab
-          ls -lh iptv_app-*.apk iptv_app-*.aab
+          cp build/app/outputs/flutter-apk/app-release.apk frametv-${VERSION}.apk
+          cp build/app/outputs/bundle/release/app-release.aab frametv-${VERSION}.aab
+          ls -lh frametv-*.apk frametv-*.aab
 
       # --------------- Generate changelog ---------------
       - name: Generate changelog
@@ -128,8 +128,8 @@ jobs:
           name: "${{ steps.version.outputs.tag }}"
           body_path: CHANGELOG.md
           files: |
-            iptv_app-*.apk
-            iptv_app-*.aab
+            frametv-*.apk
+            frametv-*.aab
           draft: false
           prerelease: ${{ contains(github.ref_name, 'alpha') || contains(github.ref_name, 'beta') || contains(github.ref_name, 'rc') }}
         env:
