@@ -16,12 +16,18 @@ class Channel {
 
   factory Channel.fromJson(Map<String, dynamic> json) {
     return Channel(
-      streamId: json['stream_id'] as int,
+      streamId: _parseInt(json['stream_id']),
       name: json['name'] as String,
-      categoryId: int.tryParse(json['category_id'].toString()) ?? 0,
+      categoryId: _parseInt(json['category_id']),
       streamIcon: json['stream_icon'] as String?,
       epgChannelId: json['epg_channel_id'] as String?,
     );
+  }
+
+  static int _parseInt(dynamic value) {
+    if (value is int) return value;
+    if (value is String) return int.tryParse(value) ?? 0;
+    return 0;
   }
 
   Map<String, dynamic> toJson() => {

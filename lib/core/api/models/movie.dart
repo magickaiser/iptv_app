@@ -26,9 +26,9 @@ class Movie {
 
   factory Movie.fromJson(Map<String, dynamic> json) {
     return Movie(
-      streamId: json['stream_id'] as int,
+      streamId: _parseInt(json['stream_id']),
       name: json['name'] as String,
-      categoryId: int.tryParse(json['category_id'].toString()) ?? 0,
+      categoryId: _parseInt(json['category_id']),
       streamIcon: json['stream_icon'] as String?,
       plot: json['plot'] as String?,
       cast: json['cast'] as String?,
@@ -37,5 +37,11 @@ class Movie {
       releaseDate: json['releaseDate'] as String? ?? json['release_date'] as String?,
       rating: (json['rating'] as num?)?.toDouble(),
     );
+  }
+
+  static int _parseInt(dynamic value) {
+    if (value is int) return value;
+    if (value is String) return int.tryParse(value) ?? 0;
+    return 0;
   }
 }

@@ -53,16 +53,16 @@ class XtreamClient {
   Future<List<Category>> fetchLiveCategories() async {
     final params = Map<String, dynamic>.from(_authParams)..['action'] = 'get_live_categories';
     final response = await _dio.get(_playerApi, queryParameters: params);
-    final List<dynamic> list = response.data;
-    return list.map((e) => Category.fromJson(e)).toList();
+    final rawList = response.data is List ? response.data as List : [];
+    return rawList.map((e) => Category.fromJson(e as Map<String, dynamic>)).toList();
   }
 
   /// Fetch live TV channels.
   Future<List<Channel>> fetchLiveChannels() async {
     final params = Map<String, dynamic>.from(_authParams)..['action'] = 'get_live_streams';
     final response = await _dio.get(_playerApi, queryParameters: params);
-    final List<dynamic> list = response.data;
-    return list.map((e) => Channel.fromJson(e)).toList();
+    final rawList = response.data is List ? response.data as List : [];
+    return rawList.map((e) => Channel.fromJson(e as Map<String, dynamic>)).toList();
   }
 
   /// Fetch short EPG for a single stream.
@@ -76,8 +76,10 @@ class XtreamClient {
     final data = response.data;
 
     if (data is Map && data.containsKey('epg_listings')) {
-      final List<dynamic> listings = data['epg_listings'];
-      return listings.map((e) => EpgProgram.fromJson(e)).toList();
+      final rawList = data['epg_listings'];
+      if (rawList is List) {
+        return rawList.map((e) => EpgProgram.fromJson(e as Map<String, dynamic>)).toList();
+      }
     }
     return [];
   }

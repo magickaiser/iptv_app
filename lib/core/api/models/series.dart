@@ -26,9 +26,9 @@ class Series {
 
   factory Series.fromJson(Map<String, dynamic> json) {
     return Series(
-      seriesId: json['series_id'] as int,
+      seriesId: _parseInt(json['series_id']),
       name: json['name'] as String,
-      categoryId: int.tryParse(json['category_id'].toString()) ?? 0,
+      categoryId: _parseInt(json['category_id']),
       cover: json['cover'] as String?,
       plot: json['plot'] as String?,
       cast: json['cast'] as String?,
@@ -37,5 +37,11 @@ class Series {
       releaseDate: json['releaseDate'] as String? ?? json['release_date'] as String?,
       rating: (json['rating'] as num?)?.toDouble(),
     );
+  }
+
+  static int _parseInt(dynamic value) {
+    if (value is int) return value;
+    if (value is String) return int.tryParse(value) ?? 0;
+    return 0;
   }
 }
