@@ -47,6 +47,11 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget> {
 
     _videoController = VideoPlayerController.networkUrl(
       Uri.parse(url),
+      httpHeaders: {
+        'User-Agent': 'Mozilla/5.0 (Linux; Android 15) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Mobile Safari/537.36',
+        'Referer': url.substring(0, url.indexOf('/live/')),
+        'Origin': url.substring(0, url.indexOf('/', 8)),
+      },
     );
 
     try {
