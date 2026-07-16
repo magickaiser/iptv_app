@@ -31,9 +31,63 @@ class _IptvAppState extends ConsumerState<IptvApp> {
       title: 'IPTV Player',
       theme: MobileTheme.theme,
       debugShowCheckedModeBanner: false,
-      home: authState == AuthState.authenticated
-          ? const _MainScreen()
-          : const LoginScreen(),
+      home: _buildHome(authState),
+    );
+  }
+
+  Widget _buildHome(AuthState authState) {
+    switch (authState) {
+      case AuthState.initial:
+        // Show login, but if we have saved credentials (still loading info), show splash
+        final hasSaved = ref.read(loginProvider.notifier).savedInfo != null;
+        if (hasSaved) {
+          // Auto-login in progress but already checking
+          return const _SplashScreen();
+        }
+        return const LoginScreen();
+
+      case AuthState.loading:
+        return const _SplashScreen();
+
+      case AuthState.authenticated:
+        return const _MainScreen();
+
+      case AuthState.error:
+        return const LoginScreen();
+    }
+  }
+}
+
+/// Loading splash shown while auto-login tries to connect.
+class _SplashScreen extends StatelessWidget {
+  const _SplashScreen();
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Theme.of(context).colorScheme.surface,
+      body: Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.live_tv, size: 80, color: Colors.blue),
+            const SizedBox(height: 24),
+            const SizedBox(
+              width: 32,
+              height: 32,
+              child: CircularProgressIndicator(strokeWidth: 3),
+            ),
+            const SizedBox(height: 20),
+            Text(
+              'Conectando...',
+              style: TextStyle(
+                color: Theme.of(context).colorScheme.onSurface,
+                fontSize: 16,
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
