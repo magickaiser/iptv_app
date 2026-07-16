@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:media_kit/media_kit.dart';
-import 'package:media_kit_video/media_kit_video.dart';
+import 'package:video_player/video_player.dart';
+import 'package:chewie/chewie.dart';
 
-/// Video player widget using media_kit for HLS streaming.
+/// Video player widget using video_player + chewie for HLS streaming.
 class VideoPlayerWidget extends StatefulWidget {
   final String streamUrl;
 
@@ -16,38 +16,54 @@ class VideoPlayerWidget extends StatefulWidget {
 }
 
 class _VideoPlayerWidgetState extends State<VideoPlayerWidget> {
-  late final Player _player;
-  late final VideoController _videoController;
+  late final VideoPlayerController _videoController;
+  ChewieController? _chewieController;
   bool _initialized = false;
 
   @override
   void initState() {
     super.initState();
-    _player = Player();
-    _videoController = VideoController(_player);
-    _initPlayer();
+    _videoController = VideoPlayerController.networkUrl(
+      Uri.parse(widget.streamUrl),
+      videoPlayerOptions: VideoPlayerOptions(
+        mixWithOthers: false,
+        allowBackgroundPlayback: false,
+      ),
+    );
+    _init();
   }
 
-  Future<void> _initPlayer() async {
+  Future<void> _init() async {
     try {
-      await _player.open(Media(widget.streamUrl));
+      await _videoController.initialize();
+      _chewieController = ChewieController(
+        videoPlayerController: _videoController,
+        autoPlay: true,
+        looping: false,
+        allowFullScreen: false, // We handle fullscreen via rotation
+        showControls: true,
+        materialProgressColors: ChewieProgressColors(
+          playedColor: Colors.blue,
+          handleColor: Colors.blueAccent,
+          bufferedColor: Colors.grey.shade700,
+        ),
+      );
       if (mounted) setState(() => _initialized = true);
-    } catch (e) {
-      if (mounted) {
-        setState(() => _initialized = true); // show error state
-      }
+    } catch (_) {
+      if (mounted) setState(() => _initialized = true);
     }
   }
 
   @override
   void dispose() {
-    _player.dispose();
+    _videoController.dispose();
+    _chewieController?.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    if (!_initialized) {
+    if (!_initialized || _chewieController == null) {
       return const Center(
         child: SizedBox(
           width: 40,
@@ -57,10 +73,6 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget> {
       );
     }
 
-    return Video(
-      controller: _videoController,
-      fit: BoxFit.contain,
-      controls: AdaptiveVideoControls,
-    );
+    return Chewie(controller: _chewieController!);
   }
 }
