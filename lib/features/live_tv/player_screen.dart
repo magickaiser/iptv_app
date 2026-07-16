@@ -55,27 +55,33 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
   Widget build(BuildContext context) {
     final state = ref.watch(liveTvProvider);
 
-    return Scaffold(
-      backgroundColor: Colors.black,
-      body: Stack(
-        children: [
-          // Video player
-          VideoPlayerWidget(streamUrl: _streamUrl),
+    return PopScope(
+      canPop: true,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) Navigator.pop(context);
+      },
+      child: Scaffold(
+        backgroundColor: Colors.black,
+        body: Stack(
+          children: [
+            // Background: video player
+            VideoPlayerWidget(streamUrl: _streamUrl),
 
-          // EPG overlay
-          if (_showEpg) _buildEpgOverlay(state.epgPrograms),
-
-          // Top controls
-          if (_showControls) _buildTopControls(),
-
-          // Gesture detector for tap-to-toggle controls
-          Positioned.fill(
-            child: GestureDetector(
-              behavior: HitTestBehavior.translucent,
-              onTap: () => setState(() => _showControls = !_showControls),
+            // Tap-to-toggle overlay (behind controls so they stay tappable)
+            Positioned.fill(
+              child: GestureDetector(
+                behavior: HitTestBehavior.translucent,
+                onTap: () => setState(() => _showControls = !_showControls),
+              ),
             ),
-          ),
-        ],
+
+            // EPG overlay
+            if (_showEpg) _buildEpgOverlay(state.epgPrograms),
+
+            // Top controls (on top of gesture detector)
+            if (_showControls) _buildTopControls(),
+          ],
+        ),
       ),
     );
   }
