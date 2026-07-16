@@ -89,6 +89,38 @@ class XtreamClient {
     return '$_baseUrl/live/$_username/$_password/$streamId$extension';
   }
 
+  /// Build a list of stream URLs to try, ordered by preference.
+  List<String> buildStreamUrlList(int streamId) {
+    return [
+      buildStreamUrl(streamId, extension: '.m3u8'),
+      buildStreamUrl(streamId, extension: '.ts'),
+      buildStreamUrl(streamId, extension: ''),
+    ];
+  }
+
+  /// Test stream connectivity and return HTTP status + message.
+  Future<Map<String, String>> checkStreamUrl(String url) async {
+    try {
+      final response = await _dio.head(
+        url,
+        options: Options(
+          connectTimeout: const Duration(seconds: 5),
+          receiveTimeout: const Duration(seconds: 5),
+          validateStatus: (_) => true, // Don't throw on non-200
+        ),
+      );
+      return {
+        'status': response.statusCode.toString(),
+        'message': response.statusMessage ?? 'OK',
+      };
+    } on DioException catch (e) {
+      return {
+        'status': 'ERR',
+        'message': e.type.name,
+      };
+    }
+  }
+
   /// Fetch all EPG data via XMLTV.
   Future<String> fetchXmltv() async {
     final params = Map<String, dynamic>.from(_authParams);

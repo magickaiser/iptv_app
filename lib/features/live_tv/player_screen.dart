@@ -46,9 +46,9 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
     super.dispose();
   }
 
-  String get _streamUrl {
+  List<String> get _streamUrls {
     final provider = ref.read(liveTvProvider.notifier);
-    return provider.client.buildStreamUrl(widget.channel.streamId);
+    return provider.client.buildStreamUrlList(widget.channel.streamId);
   }
 
   @override
@@ -65,7 +65,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
         body: Stack(
           children: [
             // Background: video player
-            VideoPlayerWidget(streamUrl: _streamUrl),
+            VideoPlayerWidget(streamUrls: _streamUrls),
 
             // Tap-to-toggle overlay (behind controls so they stay tappable)
             Positioned.fill(
