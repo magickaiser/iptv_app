@@ -17,22 +17,33 @@ class UpdateService {
       receiveTimeout: const Duration(seconds: 10),
       headers: {'User-Agent': 'FrameTV/1.0'},
     ));
-    final response = await dio.get(_apiUrl);
-    final data = response.data as Map<String, dynamic>;
-    final remote = data['tag_name'] as String?;
 
-    // Extract the APK download URL from the release assets
-    String? apkUrl;
-    final assets = data['assets'] as List? ?? [];
-    for (final a in assets) {
-      final name = a['name'] as String? ?? '';
-      if (name.endsWith('.apk')) {
-        apkUrl = a['browser_download_url'] as String?;
-        break;
+    // Retry up to 3 times with 2s delay for transient network issues
+    DioException? lastError;
+    for (int attempt = 1; attempt <= 3; attempt++) {
+      try {
+        final response = await dio.get(_apiUrl);
+        final data = response.data as Map<String, dynamic>;
+        final remote = data['tag_name'] as String?;
+
+        String? apkUrl;
+        final assets = data['assets'] as List? ?? [];
+        for (final a in assets) {
+          final name = a['name'] as String? ?? '';
+          if (name.endsWith('.apk')) {
+            apkUrl = a['browser_download_url'] as String?;
+            break;
+          }
+        }
+
+        return (local: local, remote: remote, apkUrl: apkUrl);
+      } on DioException catch (e) {
+        lastError = e;
+        if (attempt < 3) await Future.delayed(const Duration(seconds: 2));
       }
     }
 
-    return (local: local, remote: remote, apkUrl: apkUrl);
+    throw lastError!;
   }
 
   /// Returns true if remote version is newer than local.

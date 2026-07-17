@@ -183,7 +183,7 @@ class _AccountSelectionScreenState extends ConsumerState<AccountSelectionScreen>
           _ => 'Error del servidor (${e.response?.statusCode ?? "?"}).',
         },
       DioExceptionType.connectionError =>
-        'Sin conexión a internet.',
+        'No se pudo conectar con GitHub. Revisa tu red o VPN.',
       _ => 'Error de red: ${e.message ?? "desconocido"}',
     };
   }
