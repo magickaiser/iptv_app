@@ -50,9 +50,16 @@ class AccountStorage {
     await _secureStorage.write(key: 'pass_$accountId', value: password);
   }
 
-  /// Get password for an account.
+  /// Get password for an account. Returns null if not found or corrupted.
   Future<String?> getPassword(String accountId) async {
-    return _secureStorage.read(key: 'pass_$accountId');
+    try {
+      return await _secureStorage.read(key: 'pass_$accountId');
+    } catch (e) {
+      // BadPaddingError, KeyStoreException, etc. — key may have been
+      // invalidated by OS update, app reinstall, or keystore reset.
+      await _secureStorage.delete(key: 'pass_$accountId');
+      return null;
+    }
   }
 
   /// Load all saved accounts.

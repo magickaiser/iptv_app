@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:open_filex/open_filex.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 import '../../core/api/models/xtream_account.dart';
 import '../../core/services/update_service.dart';
 import 'edit_account_screen.dart';
@@ -27,12 +28,23 @@ class _AccountSelectionScreenState extends ConsumerState<AccountSelectionScreen>
   @override
   void initState() {
     super.initState();
-    _checkUpdate();
+    _loadLocalVersion();
+    _checkUpdate(silent: true);
   }
 
-  Future<void> _checkUpdate() async {
-    // Cooldown: skip API call within 5 minutes of last check
-    if (_lastCheckTime != null &&
+  Future<void> _loadLocalVersion() async {
+    try {
+      final info = await PackageInfo.fromPlatform();
+      if (mounted) setState(() => _localVersion = info.version);
+    } catch (_) {
+      if (mounted) setState(() => _localVersion = '1.0.0');
+    }
+  }
+
+  Future<void> _checkUpdate({bool silent = false}) async {
+    // Cooldown: skip API call within 5 minutes of last check (only for silent auto-checks)
+    if (silent &&
+        _lastCheckTime != null &&
         DateTime.now().difference(_lastCheckTime!) < const Duration(minutes: 5)) {
       return;
     }
@@ -52,7 +64,7 @@ class _AccountSelectionScreenState extends ConsumerState<AccountSelectionScreen>
           _latestApkUrl = result.apkUrl;
         });
         _showUpdateDialog(remote, result.apkUrl);
-      } else {
+      } else if (!silent) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Ya tienes la última versión ($local)'),
@@ -62,7 +74,7 @@ class _AccountSelectionScreenState extends ConsumerState<AccountSelectionScreen>
         );
       }
     } catch (e) {
-      if (mounted) {
+      if (mounted && !silent) {
         final message = switch (e) {
           DioException() => _dioErrorMessage(e),
           _ => 'Error: ${e.toString().replaceFirst("Exception: ", "")}',
