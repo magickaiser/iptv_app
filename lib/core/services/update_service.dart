@@ -9,16 +9,21 @@ class UpdateService {
   static const _apiUrl =
       'https://api.github.com/repos/$_repoOwner/$_repoName/releases/latest';
 
+  static const _headers = {
+    'User-Agent': 'FrameTV/1.0',
+    'Accept': 'application/vnd.github+json',
+  };
+
   /// Returns (localVersion, latestVersion, apkDownloadUrl). Throws on HTTP error.
   static Future<({String local, String? remote, String? apkUrl})> check() async {
     final local = await _localVersion();
     final dio = Dio(BaseOptions(
       connectTimeout: const Duration(seconds: 10),
       receiveTimeout: const Duration(seconds: 10),
-      headers: {'User-Agent': 'FrameTV/1.0'},
+      headers: _headers,
     ));
 
-    // Retry up to 3 times with 2s delay for transient network issues
+    // Retry up to 3 times with 1s delay for transient network issues
     DioException? lastError;
     for (int attempt = 1; attempt <= 3; attempt++) {
       try {
@@ -39,7 +44,7 @@ class UpdateService {
         return (local: local, remote: remote, apkUrl: apkUrl);
       } on DioException catch (e) {
         lastError = e;
-        if (attempt < 3) await Future.delayed(const Duration(seconds: 2));
+        if (attempt < 3) await Future.delayed(const Duration(seconds: 1));
       }
     }
 
@@ -60,9 +65,7 @@ class UpdateService {
     final dir = await getApplicationDocumentsDirectory();
     final path = '${dir.path}/frametv-$version.apk';
 
-    final dio = Dio(BaseOptions(
-      headers: {'User-Agent': 'FrameTV/1.0'},
-    ));
+    final dio = Dio(BaseOptions(headers: _headers));
     await dio.download(apkUrl, path, onReceiveProgress: onProgress);
     return path;
   }
