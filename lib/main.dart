@@ -1,3 +1,5 @@
+import 'dart:ui';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hive_flutter/hive_flutter.dart';
@@ -7,6 +9,23 @@ import 'app.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Global error handlers — print all errors to the terminal.
+  FlutterError.onError = (details) {
+    FlutterError.presentError(details);
+    debugPrint('══╡ FRAMEWORK ERROR ╞══════════════════════════════════');
+    debugPrint(details.exceptionAsString());
+    debugPrint(details.stack?.toString() ?? '');
+    debugPrint('══════════════════════════════════════════════════════');
+  };
+
+  PlatformDispatcher.instance.onError = (error, stack) {
+    debugPrint('══╡ UNHANDLED ERROR ╞══════════════════════════════════');
+    debugPrint('$error');
+    debugPrint('$stack');
+    debugPrint('══════════════════════════════════════════════════════');
+    return true;
+  };
 
   // Initialize media_kit (libmpv from media_kit_libs_video).
   MediaKit.ensureInitialized();

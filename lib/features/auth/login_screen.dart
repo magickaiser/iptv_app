@@ -22,7 +22,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   @override
   void initState() {
     super.initState();
-    ref.read(loginProvider.notifier).clearError();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ref.read(loginProvider.notifier).clearError();
+    });
     // Listen to auth state: if authenticated, pop back
     ref.listenManual(loginProvider, (prev, next) {
       if (next == AuthState.authenticated && mounted) {
