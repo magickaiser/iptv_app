@@ -9,8 +9,8 @@ class UpdateService {
   static const _apiUrl =
       'https://api.github.com/repos/$_repoOwner/$_repoName/releases/latest';
 
-  /// Returns (localVersion, latestVersion). Throws on HTTP error.
-  static Future<({String local, String? remote})> check() async {
+  /// Returns (localVersion, latestVersion, apkDownloadUrl). Throws on HTTP error.
+  static Future<({String local, String? remote, String? apkUrl})> check() async {
     final local = await _localVersion();
     final dio = Dio(BaseOptions(
       connectTimeout: const Duration(seconds: 5),
@@ -20,7 +20,19 @@ class UpdateService {
     final response = await dio.get(_apiUrl);
     final data = response.data as Map<String, dynamic>;
     final remote = data['tag_name'] as String?;
-    return (local: local, remote: remote);
+
+    // Extract the APK download URL from the release assets
+    String? apkUrl;
+    final assets = data['assets'] as List? ?? [];
+    for (final a in assets) {
+      final name = a['name'] as String? ?? '';
+      if (name.endsWith('.apk')) {
+        apkUrl = a['browser_download_url'] as String?;
+        break;
+      }
+    }
+
+    return (local: local, remote: remote, apkUrl: apkUrl);
   }
 
   /// Returns true if remote version is newer than local.
@@ -28,31 +40,12 @@ class UpdateService {
     return _compareVersions(remote, local) > 0;
   }
 
-  /// Get the download URL for the APK in a specific release.
-  static Future<String?> getApkUrl(String version) async {
-    final dio = Dio(BaseOptions(
-      headers: {'User-Agent': 'FrameTV/1.0'},
-    ));
-    final url = 'https://api.github.com/repos/$_repoOwner/$_repoName/releases/tags/$version';
-    final resp = await dio.get(url);
-    final assets = resp.data['assets'] as List? ?? [];
-    for (final a in assets) {
-      final name = a['name'] as String? ?? '';
-      if (name.endsWith('.apk')) {
-        return a['browser_download_url'] as String?;
-      }
-    }
-    return null;
-  }
-
-  /// Download the APK from GitHub with progress callback.
+  /// Download the APK from a direct URL with progress callback.
   static Future<String> downloadApk(
+    String apkUrl,
     String version,
     void Function(int received, int total) onProgress,
   ) async {
-    final apkUrl = await getApkUrl(version);
-    if (apkUrl == null) throw Exception('No se encontró el APK');
-
     final dir = await getApplicationDocumentsDirectory();
     final path = '${dir.path}/frametv-$version.apk';
 
