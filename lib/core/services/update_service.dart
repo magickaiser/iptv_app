@@ -13,8 +13,8 @@ class UpdateService {
   static Future<({String local, String? remote, String? apkUrl})> check() async {
     final local = await _localVersion();
     final dio = Dio(BaseOptions(
-      connectTimeout: const Duration(seconds: 5),
-      receiveTimeout: const Duration(seconds: 5),
+      connectTimeout: const Duration(seconds: 10),
+      receiveTimeout: const Duration(seconds: 10),
       headers: {'User-Agent': 'FrameTV/1.0'},
     ));
     final response = await dio.get(_apiUrl);

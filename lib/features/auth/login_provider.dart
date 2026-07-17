@@ -135,6 +135,14 @@ class LoginProvider extends StateNotifier<AuthState> {
     _errorMessage = null;
     state = AuthState.initial;
   }
+
+  /// Clear any stale error state. Call before showing login UI.
+  void clearError() {
+    _errorMessage = null;
+    if (state == AuthState.error) {
+      state = AuthState.initial;
+    }
+  }
 }
 
 /// Provider instance.
