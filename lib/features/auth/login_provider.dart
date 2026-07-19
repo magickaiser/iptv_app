@@ -122,10 +122,6 @@ class LoginProvider extends StateNotifier<AuthState> {
       _client = null;
     }
     _refreshAccounts();
-    if (state == AuthState.initial) {
-      // Force rebuild: StateNotifier skips re-emitting same state
-      state = AuthState.initial;
-    }
   }
 
   /// Logout: disconnect but keep accounts.

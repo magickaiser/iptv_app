@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/api/models/xtream_account.dart';
 import 'login_provider.dart';
-import 'login_screen.dart';
 
 /// Edit account screen.
 class EditAccountScreen extends ConsumerStatefulWidget {

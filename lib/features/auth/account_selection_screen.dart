@@ -203,6 +203,9 @@ class _AccountSelectionScreenState extends ConsumerState<AccountSelectionScreen>
           // Update banner
           if (_updateAvailable) _buildUpdateBanner(),
 
+          // Error display
+          if (state == AuthState.error) _buildError(),
+
           Expanded(
             child: accounts.isEmpty
                 ? Center(
